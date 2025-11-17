@@ -475,6 +475,8 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
     newStart,
     newEnd,
   }: CalendarEventTimesChangedEvent): void {
+    (window as any).umami?.track('task-drag-resize');
+
     const updatedTasks: Task[] = this.tasks.map((iEvent) => {
       if (iEvent.id === event.id) {
         // TODO: Refactor
@@ -529,6 +531,9 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
 
   handleEvent(action: 'task' | 'segment', task: CalendarEvent): void {
     if (action === 'segment') {
+      // Track opening new task modal
+      (window as any).umami?.track('open-new-task-modal');
+
       const modalRef = this.modal.open(TaskModalComponent, {
         size: 'lg',
         backdrop: 'static',
@@ -546,6 +551,9 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
         saveHandler: (task: Task) => this.addTask(task),
       };
     } else if (action === 'task') {
+      // Track opening edit task modal
+      (window as any).umami?.track('open-edit-task-modal');
+
       const modalRef = this.modal.open(TaskModalComponent, {
         size: 'lg',
         backdrop: 'static',

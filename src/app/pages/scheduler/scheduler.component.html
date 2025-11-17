@@ -6,6 +6,7 @@
       <button
         (click)="toggleMobileMenu()"
         class="fflex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-700 transition-all cursor-pointer text-white"
+        data-umami-event="toggle-mobile-menu"
       >
         <i
           class="ph text-xl text-white"
@@ -17,6 +18,7 @@
       <button
         (click)="addColumn()"
         class="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer shadow-sm text-white font-medium"
+        data-umami-event="add-column"
       >
         <i class="ph ph-plus text-xl"></i>
         <span class="hidden md:block">Add Column</span>
@@ -30,6 +32,7 @@
         (click)="openSettings()"
         class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-700 transition-all cursor-pointer text-white"
         title="Settings"
+        data-umami-event="open-settings"
       >
         <i class="ph ph-gear text-xl"></i>
       </button>
@@ -47,6 +50,7 @@
       <button
         (click)="open(wipeConfirmation); closeMobileMenu()"
         class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 transition-all text-white font-medium shadow-sm"
+        data-umami-event="open-wipe-confirmation"
       >
         <i class="ph ph-trash text-xl"></i>
         <span>Wipe Data</span>
@@ -54,6 +58,7 @@
       <button
         (click)="exportAndDownload(); closeMobileMenu()"
         class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-green-600 hover:bg-green-700 transition-all text-white font-medium shadow-sm"
+        data-umami-event="download-schedule"
       >
         <i class="ph ph-file-arrow-down text-xl"></i>
         <span>Download</span>
@@ -61,6 +66,7 @@
       <button
         (click)="takeScreenshot(); closeMobileMenu()"
         class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition-all text-white font-medium shadow-sm"
+        data-umami-event="take-screenshot"
       >
         <i class="ph ph-projector-screen text-xl"></i>
         <span>Screenshot</span>
@@ -68,6 +74,7 @@
       <button
         (click)="updateExportHash(); open(exportModal); closeMobileMenu()"
         class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition-all text-white font-medium shadow-sm"
+        data-umami-event="open-share-modal"
       >
         <i class="ph ph-share-network text-xl"></i>
         <span>Share</span>
@@ -75,6 +82,7 @@
       <button
         (click)="open(importModal); closeMobileMenu()"
         class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition-all text-white font-medium shadow-sm"
+        data-umami-event="open-import-modal"
       >
         <i class="ph ph-download-simple text-xl"></i>
         <span>Import</span>
@@ -82,6 +90,7 @@
       <button
         (click)="openParticipantStats(); closeMobileMenu()"
         class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 transition-all text-white font-medium shadow-sm"
+        data-umami-event="open-participants"
       >
         <i class="ph ph-users text-xl"></i>
         <span>Participants</span>
@@ -121,6 +130,7 @@
             <button
               class="grid place-items-center w-[32px] h-[32px] rounded-full cursor-pointer hover:bg-blue-400 transition-all"
               (click)="open(deleteColumnConfirmation)"
+              data-umami-event="open-delete-column-confirmation"
             >
               <i class="ph ph-trash"></i>
             </button>
@@ -156,6 +166,7 @@
               type="button"
               class="btn btn-outline-secondary"
               (click)="removeColumn(column.controls.id.value); modal.close()"
+              data-umami-event="delete-column-confirm"
             >
               Yes
             </button>
@@ -194,6 +205,7 @@
       type="button"
       class="btn btn-outline-secondary"
       (click)="wipeData(); modal.close()"
+      data-umami-event="wipe-data-confirm"
     >
       Yes
     </button>
@@ -221,6 +233,7 @@
     <button
       class="flex flex-row items-center gap-2 mx-auto text-white bg-blue-600 rounded-md px-4 py-2"
       (click)="copyToClipboard(); modal.dismiss()"
+      data-umami-event="copy-share-hash"
     >
       <i class="ph ph-copy-simple text-xl"></i>
       <span>Copy hash to clipboard</span>
@@ -261,6 +274,7 @@
       type="button"
       class="btn btn-outline-secondary"
       (click)="import(importField.value); modal.close()"
+      data-umami-event="import-schedule"
     >
       Import
     </button>

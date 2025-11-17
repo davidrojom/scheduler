@@ -96,6 +96,7 @@
       <button
         class="bg-red-400 text-white rounded-md px-4 py-2 mx-auto"
         (click)="deleteTask(modalData.task.id)"
+        data-umami-event="delete-task"
       >
         Delete
       </button>
@@ -109,6 +110,7 @@
           'bg-blue-600': form.valid
         }"
         [disabled]="!form.valid"
+        data-umami-event="save-task"
       >
         Save
       </button>

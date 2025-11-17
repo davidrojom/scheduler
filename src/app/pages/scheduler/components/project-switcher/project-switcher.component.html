@@ -4,6 +4,7 @@
     type="button"
     (click)="toggleDropdown()"
     *ngIf="currentProject$ | async as currentProject"
+    data-umami-event="toggle-project-dropdown"
   >
     {{ currentProject.name }}
   </button>
@@ -22,6 +23,7 @@
         class="dropdown-item"
         [class.active]="(currentProject$ | async)?.id === project.id"
         (click)="switchProject(project.id)"
+        data-umami-event="switch-project"
       >
         <span class="project-name-wrapper">
           <span class="project-name-scroll" schScrollableText>{{
@@ -33,6 +35,7 @@
           class="btn btn-sm btn-link text-danger p-0 ms-2 delete-btn"
           (click)="deleteProject($event, project.id)"
           title="Delete project"
+          data-umami-event="delete-project"
         >
           <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
             <path
@@ -47,7 +50,7 @@
       </button>
     </div>
     <div class="dropdown-divider"></div>
-    <button class="dropdown-item text-primary" (click)="createNewProject()">
+    <button class="dropdown-item text-primary" (click)="createNewProject()" data-umami-event="create-new-project">
       + New Project
     </button>
   </div>

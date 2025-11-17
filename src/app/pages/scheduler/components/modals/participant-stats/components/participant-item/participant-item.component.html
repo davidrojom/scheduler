@@ -2,6 +2,7 @@
   class="bg-gray-50 rounded-lg overflow-hidden cursor-pointer"
   [attr.id]="id"
   (click)="onToggleExpanded()"
+  data-umami-event="toggle-participant-expanded"
 >
   <div
     class="participant-header"
@@ -37,6 +38,7 @@
       type="button"
       class="delete-button"
       (click)="onDelete()"
+      data-umami-event="delete-participant"
     >
       Delete
     </button>

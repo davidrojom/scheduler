@@ -107,6 +107,8 @@ export class SchedulerComponent implements OnInit {
   }
 
   drop(event: CdkDragDrop<string[]>) {
+    (window as any).umami?.track('column-reorder');
+
     moveItemInArray(
       this.form.controls.columns.controls,
       event.previousIndex,

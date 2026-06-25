@@ -162,6 +162,66 @@ describe('ApiBoardPersistence', () => {
     expect(service.getConfig().columns).toEqual([]);
   });
 
+  it('clears cached content after deleting the last board', fakeAsync(() => {
+    service.refreshBoards().subscribe();
+    httpMock
+      .expectOne(boardsUrl)
+      .flush([
+        { id: 'b1', name: 'Board', myRole: 'owner', config: {}, updatedAt: ISO },
+      ]);
+    service.switchProject('b1').subscribe();
+    httpMock.expectOne(`${boardsUrl}/b1`).flush(
+      detailDto('b1', 'Board', {
+        columns: [{ id: 'c1', title: 'Stage', position: 0 }],
+        tasks: [
+          {
+            id: 't1',
+            columnId: 'c1',
+            title: 'Show',
+            startHour: '9:0',
+            endHour: '10:0',
+            participants: ['Ana'],
+            position: 0,
+          },
+        ],
+        participants: ['Ana'],
+      })
+    );
+    flushMicrotasks();
+
+    expect(service.getConfig().columns.length).toBe(1);
+
+    service.deleteProject('b1');
+
+    const del = httpMock.expectOne(`${boardsUrl}/b1`);
+    expect(del.request.method).toBe('DELETE');
+    del.flush({ success: true });
+
+    expect(service.getCurrentProject()).toBeNull();
+    expect(service.getConfig().columns).toEqual([]);
+    expect(service.getConfig().tasks).toEqual([]);
+    expect(service.getConfig().participants).toEqual([]);
+    expect(service.getConfig().logo).toBeNull();
+  }));
+
+  it('switches to a remaining board when a non-last board is deleted', () => {
+    service.refreshBoards().subscribe();
+    httpMock.expectOne(boardsUrl).flush([
+      { id: 'b1', name: 'B1', myRole: 'owner', config: {}, updatedAt: ISO },
+      { id: 'b2', name: 'B2', myRole: 'owner', config: {}, updatedAt: ISO },
+    ]);
+    expect(service.getCurrentProject()?.id).toBe('b1');
+
+    service.deleteProject('b1');
+
+    const del = httpMock.expectOne(`${boardsUrl}/b1`);
+    expect(del.request.method).toBe('DELETE');
+    del.flush({ success: true });
+
+    expect(service.getProjects().map((p) => p.id)).toEqual(['b2']);
+    expect(service.getCurrentProject()?.id).toBe('b2');
+  });
+
   describe('content sync', () => {
     function loadBoard(detail: ReturnType<typeof detailDto>) {
       service.refreshBoards().subscribe();

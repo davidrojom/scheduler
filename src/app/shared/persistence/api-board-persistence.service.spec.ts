@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, fakeAsync, flushMicrotasks } from '@angular/core/testing';
 import {
   HttpClientTestingModule,
   HttpTestingController,
@@ -6,6 +6,7 @@ import {
 
 import { ApiBoardPersistence } from './api-board-persistence.service';
 import { environment } from '../../../environments/environment';
+import { Task } from '../../pages/scheduler/components/modals/task/task-modal.component';
 
 const ISO = '2024-01-01T00:00:00.000Z';
 
@@ -20,15 +21,44 @@ function boardDto(id: string, name: string) {
   };
 }
 
-function detailDto(id: string, name: string) {
+function detailDto(id: string, name: string, content: Partial<{
+  columns: { id: string; title: string; position: number }[];
+  tasks: {
+    id: string;
+    columnId: string;
+    title: string;
+    startHour: string;
+    endHour: string;
+    participants: string[];
+    position: number;
+  }[];
+  participants: string[];
+}> = {}) {
   return {
     board: boardDto(id, name),
     myRole: 'owner',
     members: [],
-    columns: [],
-    tasks: [],
-    participants: [],
+    columns: content.columns ?? [],
+    tasks: content.tasks ?? [],
+    participants: content.participants ?? [],
   };
+}
+
+function task(
+  id: string,
+  columnId: string,
+  title: string,
+  startHour: number,
+  startMinute: number,
+  endHour: number,
+  endMinute: number,
+  participants: string[] = []
+): Task {
+  const start = new Date();
+  const end = new Date();
+  start.setHours(startHour, startMinute);
+  end.setHours(endHour, endMinute);
+  return { id, columnId, title, start, end, participants };
 }
 
 describe('ApiBoardPersistence', () => {
@@ -130,5 +160,221 @@ describe('ApiBoardPersistence', () => {
     expect(resolved).toBeTrue();
     expect(service.getCurrentProject()?.id).toBe(project.id);
     expect(service.getConfig().columns).toEqual([]);
+  });
+
+  describe('content sync', () => {
+    function loadBoard(detail: ReturnType<typeof detailDto>) {
+      service.refreshBoards().subscribe();
+      httpMock
+        .expectOne(boardsUrl)
+        .flush([
+          { id: 'b1', name: 'Board', myRole: 'owner', config: {}, updatedAt: ISO },
+        ]);
+      service.switchProject('b1').subscribe();
+      httpMock.expectOne(`${boardsUrl}/b1`).flush(detail);
+      // Drain the post-load snapshot guard so subsequent writes are user edits.
+      flushMicrotasks();
+    }
+
+    it('does not write content while applying the loaded snapshot', fakeAsync(() => {
+      service.refreshBoards().subscribe();
+      httpMock
+        .expectOne(boardsUrl)
+        .flush([
+          { id: 'b1', name: 'Board', myRole: 'owner', config: {}, updatedAt: ISO },
+        ]);
+      service.switchProject('b1').subscribe();
+      httpMock.expectOne(`${boardsUrl}/b1`).flush(
+        detailDto('b1', 'Board', {
+          columns: [{ id: 'c1', title: 'Stage', position: 0 }],
+        })
+      );
+
+      // The scheduler form rebuild echoes columns back synchronously before the
+      // guard releases; those echoes must NOT hit the content endpoints.
+      service.setColumns([]);
+      service.setColumns([{ id: 'c1', title: 'Stage' }]);
+      expect(httpMock.match(() => true).length).toBe(0);
+
+      flushMicrotasks();
+    }));
+
+    it('POSTs a new column', fakeAsync(() => {
+      loadBoard(
+        detailDto('b1', 'Board', {
+          columns: [{ id: 'c1', title: 'Stage', position: 0 }],
+        })
+      );
+
+      service.setColumns([
+        { id: 'c1', title: 'Stage' },
+        { id: 'c2', title: 'Room' },
+      ]);
+
+      const req = httpMock.expectOne(`${boardsUrl}/b1/columns`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ id: 'c2', title: 'Room' });
+      req.flush({ id: 'c2', title: 'Room', position: 1 });
+    }));
+
+    it('PATCHes a renamed column', fakeAsync(() => {
+      loadBoard(
+        detailDto('b1', 'Board', {
+          columns: [{ id: 'c1', title: 'Stage', position: 0 }],
+        })
+      );
+
+      service.setColumns([{ id: 'c1', title: 'Main Stage' }]);
+
+      const req = httpMock.expectOne(`${boardsUrl}/b1/columns/c1`);
+      expect(req.request.method).toBe('PATCH');
+      expect(req.request.body).toEqual({ title: 'Main Stage' });
+      req.flush({ id: 'c1', title: 'Main Stage', position: 0 });
+    }));
+
+    it('DELETEs a removed column', fakeAsync(() => {
+      loadBoard(
+        detailDto('b1', 'Board', {
+          columns: [
+            { id: 'c1', title: 'Stage', position: 0 },
+            { id: 'c2', title: 'Room', position: 1 },
+          ],
+        })
+      );
+
+      service.setColumns([{ id: 'c1', title: 'Stage' }]);
+
+      const req = httpMock.expectOne(`${boardsUrl}/b1/columns/c2`);
+      expect(req.request.method).toBe('DELETE');
+      req.flush({ success: true });
+    }));
+
+    it('PATCHes columns/reorder when only the order changes', fakeAsync(() => {
+      loadBoard(
+        detailDto('b1', 'Board', {
+          columns: [
+            { id: 'c1', title: 'A', position: 0 },
+            { id: 'c2', title: 'B', position: 1 },
+            { id: 'c3', title: 'C', position: 2 },
+          ],
+        })
+      );
+
+      service.setColumns([
+        { id: 'c3', title: 'C' },
+        { id: 'c1', title: 'A' },
+        { id: 'c2', title: 'B' },
+      ]);
+
+      const req = httpMock.expectOne(`${boardsUrl}/b1/columns/reorder`);
+      expect(req.request.method).toBe('PATCH');
+      expect(req.request.body).toEqual({ orderedIds: ['c3', 'c1', 'c2'] });
+      req.flush([]);
+    }));
+
+    it('POSTs a new task with non-zero-padded "H:M" times', fakeAsync(() => {
+      loadBoard(
+        detailDto('b1', 'Board', {
+          columns: [{ id: 'c1', title: 'Stage', position: 0 }],
+        })
+      );
+
+      service.setTasks([task('t1', 'c1', 'Soundcheck', 9, 5, 10, 30, ['Ana'])]);
+
+      const req = httpMock.expectOne(`${boardsUrl}/b1/tasks`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({
+        id: 't1',
+        columnId: 'c1',
+        title: 'Soundcheck',
+        startHour: '9:5',
+        endHour: '10:30',
+        participants: ['Ana'],
+      });
+      req.flush({
+        id: 't1',
+        columnId: 'c1',
+        title: 'Soundcheck',
+        startHour: '9:5',
+        endHour: '10:30',
+        participants: ['Ana'],
+        position: 0,
+      });
+    }));
+
+    it('PATCHes an edited task and DELETEs a removed task', fakeAsync(() => {
+      loadBoard(
+        detailDto('b1', 'Board', {
+          columns: [{ id: 'c1', title: 'Stage', position: 0 }],
+          tasks: [
+            {
+              id: 't1',
+              columnId: 'c1',
+              title: 'Soundcheck',
+              startHour: '9:0',
+              endHour: '10:0',
+              participants: [],
+              position: 0,
+            },
+            {
+              id: 't2',
+              columnId: 'c1',
+              title: 'Show',
+              startHour: '11:0',
+              endHour: '12:0',
+              participants: [],
+              position: 1,
+            },
+          ],
+        })
+      );
+
+      // Edit t1 (title + time), drop t2.
+      service.setTasks([task('t1', 'c1', 'Rehearsal', 9, 15, 10, 45, ['Ana'])]);
+
+      const patch = httpMock.expectOne(`${boardsUrl}/b1/tasks/t1`);
+      expect(patch.request.method).toBe('PATCH');
+      expect(patch.request.body).toEqual({
+        columnId: 'c1',
+        title: 'Rehearsal',
+        startHour: '9:15',
+        endHour: '10:45',
+        participants: ['Ana'],
+      });
+      patch.flush({
+        id: 't1',
+        columnId: 'c1',
+        title: 'Rehearsal',
+        startHour: '9:15',
+        endHour: '10:45',
+        participants: ['Ana'],
+        position: 0,
+      });
+
+      const del = httpMock.expectOne(`${boardsUrl}/b1/tasks/t2`);
+      expect(del.request.method).toBe('DELETE');
+      del.flush({ success: true });
+    }));
+
+    it('POSTs and DELETEs participants', fakeAsync(() => {
+      loadBoard(
+        detailDto('b1', 'Board', {
+          participants: ['Ana', 'Beto'],
+        })
+      );
+
+      service.setParticipants(['Ana', 'Carla']);
+
+      const matches = httpMock.match(`${boardsUrl}/b1/participants`);
+      expect(matches.length).toBe(2);
+
+      const post = matches.find((r) => r.request.method === 'POST')!;
+      expect(post.request.body).toEqual({ name: 'Carla' });
+      post.flush({ name: 'Carla' });
+
+      const del = matches.find((r) => r.request.method === 'DELETE')!;
+      expect(del.request.body).toEqual({ name: 'Beto' });
+      del.flush({ success: true });
+    }));
   });
 });

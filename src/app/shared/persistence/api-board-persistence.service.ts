@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map, tap } from 'rxjs';
+import { Observable, catchError, map, of, shareReplay, switchMap, tap } from 'rxjs';
 import { v4 } from 'uuid';
 
 import {
@@ -12,6 +12,7 @@ import {
 } from './board-persistence';
 import { environment } from '../../../environments/environment';
 import {
+  BoardRole,
   DEFAULT_PROJECT_CONFIG,
   Project,
   ProjectConfig,
@@ -74,6 +75,7 @@ export class ApiBoardPersistence implements BoardPersistence {
   private _projects: Project[] = [];
   private _currentProject: Project | null = null;
   private _content: BoardContent = { ...EMPTY_CONTENT };
+  private readonly _pendingCreates = new Map<string, Observable<BoardDto>>();
 
   private get baseUrl(): string {
     return `${environment.apiBaseUrl}/boards`;
@@ -100,13 +102,18 @@ export class ApiBoardPersistence implements BoardPersistence {
     return project?.config || DEFAULT_PROJECT_CONFIG;
   }
 
-  fetchBoards(): Observable<Project[]> {
+  refreshBoards(): Observable<Project[]> {
     return this.http.get<BoardSummaryDto[]>(this.baseUrl).pipe(
-      map((boards) => boards.map((board) => this.toProject(board))),
+      map((boards) =>
+        boards.map((board) => this.toProject(board, board.myRole))
+      ),
       tap((projects) => {
         this._projects = projects;
-        if (!this._currentProject && projects.length > 0) {
-          this._currentProject = projects[0];
+        const currentId = this._currentProject?.id;
+        const stillMember =
+          !!currentId && projects.some((p) => p.id === currentId);
+        if (!stillMember) {
+          this._currentProject = projects[0] ?? null;
         }
       })
     );
@@ -120,25 +127,35 @@ export class ApiBoardPersistence implements BoardPersistence {
       config: { ...DEFAULT_PROJECT_CONFIG, ...config },
       createdAt: now,
       updatedAt: now,
+      myRole: 'owner',
     };
 
     this._projects = [...this._projects, project];
 
-    this.http
+    const create$ = this.http
       .post<BoardDto>(this.baseUrl, {
         id: project.id,
         name: project.name,
         config: project.config,
       })
-      .subscribe({ error: () => undefined });
+      .pipe(shareReplay(1));
+
+    this._pendingCreates.set(project.id, create$);
+    create$.subscribe({
+      next: () => this._pendingCreates.delete(project.id),
+      error: () => this._pendingCreates.delete(project.id),
+    });
 
     return project;
   }
 
-  updateProject(id: string, updates: ProjectUpdate): Project | null {
+  updateProject(
+    id: string,
+    updates: ProjectUpdate
+  ): Observable<Project | null> {
     const index = this._projects.findIndex((p) => p.id === id);
     if (index === -1) {
-      return null;
+      return of(null);
     }
 
     this._projects[index] = {
@@ -149,6 +166,12 @@ export class ApiBoardPersistence implements BoardPersistence {
 
     if (this._currentProject?.id === id) {
       this._currentProject = this._projects[index];
+      if (updates.config !== undefined) {
+        this._content = {
+          ...this._content,
+          logo: updates.config.logo ?? null,
+        };
+      }
     }
 
     const body: { name?: string; config?: ProjectConfig } = {};
@@ -159,11 +182,10 @@ export class ApiBoardPersistence implements BoardPersistence {
       body.config = updates.config;
     }
 
-    this.http
-      .patch<BoardDto>(`${this.baseUrl}/${id}`, body)
-      .subscribe({ error: () => undefined });
-
-    return this._projects[index];
+    return this.http.patch<BoardDto>(`${this.baseUrl}/${id}`, body).pipe(
+      map(() => this._projects[index]),
+      catchError(() => of(this._projects[index]))
+    );
   }
 
   deleteProject(id: string): void {
@@ -178,12 +200,28 @@ export class ApiBoardPersistence implements BoardPersistence {
   }
 
   switchProject(id: string): Observable<void> {
-    return this.http.get<BoardDetailDto>(`${this.baseUrl}/${id}`).pipe(
+    const pending$ = this._pendingCreates.get(id);
+    const ready$ = pending$ ? pending$.pipe(catchError(() => of(null))) : of(null);
+
+    return ready$.pipe(
+      switchMap(() => this.http.get<BoardDetailDto>(`${this.baseUrl}/${id}`)),
       tap((detail) => {
-        this._currentProject = this.toProject(detail.board);
+        this._currentProject = this.toProject(detail.board, detail.myRole);
         this._content = this.toContent(detail);
+        const index = this._projects.findIndex((p) => p.id === id);
+        if (index !== -1) {
+          this._projects[index] = this._currentProject;
+        }
       }),
-      map(() => undefined)
+      map(() => undefined),
+      catchError(() => {
+        const optimistic = this._projects.find((p) => p.id === id);
+        if (optimistic) {
+          this._currentProject = optimistic;
+          this._content = { ...EMPTY_CONTENT };
+        }
+        return of(undefined);
+      })
     );
   }
 
@@ -212,7 +250,10 @@ export class ApiBoardPersistence implements BoardPersistence {
     };
   }
 
-  private toProject(board: BoardSummaryDto | BoardDto): Project {
+  private toProject(
+    board: BoardSummaryDto | BoardDto,
+    role?: string
+  ): Project {
     const updatedAt = new Date(board.updatedAt);
     const createdAt =
       'createdAt' in board && board.createdAt
@@ -225,6 +266,7 @@ export class ApiBoardPersistence implements BoardPersistence {
       config: { ...DEFAULT_PROJECT_CONFIG, ...board.config },
       createdAt,
       updatedAt,
+      myRole: role as BoardRole | undefined,
     };
   }
 

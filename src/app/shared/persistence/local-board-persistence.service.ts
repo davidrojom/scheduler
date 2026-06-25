@@ -59,16 +59,21 @@ export class LocalBoardPersistence implements BoardPersistence {
     return project?.config || DEFAULT_PROJECT_CONFIG;
   }
 
+  refreshBoards(): Observable<Project[]> {
+    this.ensureLoaded();
+    return of(this._projects);
+  }
+
   createProject(name: string, config?: Partial<ProjectConfig>): Project {
     this.ensureLoaded();
     return this.createProjectInternal(name, config);
   }
 
-  updateProject(id: string, updates: ProjectUpdate): Project | null {
+  updateProject(id: string, updates: ProjectUpdate): Observable<Project | null> {
     this.ensureLoaded();
     const index = this._projects.findIndex((p) => p.id === id);
     if (index === -1) {
-      return null;
+      return of(null);
     }
 
     this._projects[index] = {
@@ -82,7 +87,7 @@ export class LocalBoardPersistence implements BoardPersistence {
     }
 
     this.saveProjects();
-    return this._projects[index];
+    return of(this._projects[index]);
   }
 
   deleteProject(id: string): void {

@@ -44,11 +44,18 @@ export class PersistenceFacade implements BoardPersistence {
     return this.active.getProjectConfig(projectId);
   }
 
+  refreshBoards(): Observable<Project[]> {
+    return this.active.refreshBoards();
+  }
+
   createProject(name: string, config?: Partial<ProjectConfig>): Project {
     return this.active.createProject(name, config);
   }
 
-  updateProject(id: string, updates: ProjectUpdate): Project | null {
+  updateProject(
+    id: string,
+    updates: ProjectUpdate
+  ): Observable<Project | null> {
     return this.active.updateProject(id, updates);
   }
 

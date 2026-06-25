@@ -189,12 +189,15 @@ export class SettingsComponent implements OnInit {
       logo: this.logoContent || undefined,
     };
 
-    this.projectService.updateProject(currentProject.id, {
-      name: formValue.name,
-      config: updatedConfig,
-    });
-
-    window.location.reload();
+    this.projectService
+      .updateProject(currentProject.id, {
+        name: formValue.name,
+        config: updatedConfig,
+      })
+      .subscribe({
+        next: () => window.location.reload(),
+        error: () => window.location.reload(),
+      });
   }
 
   close(): void {

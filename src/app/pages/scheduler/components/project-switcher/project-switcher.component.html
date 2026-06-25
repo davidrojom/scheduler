@@ -3,10 +3,9 @@
     class="btn btn-outline-light dropdown-toggle"
     type="button"
     (click)="toggleDropdown()"
-    *ngIf="currentProject$ | async as currentProject"
     data-umami-event="toggle-project-dropdown"
   >
-    {{ currentProject.name }}
+    {{ (currentProject$ | async)?.name || 'Boards' }}
   </button>
 
   <div
@@ -16,7 +15,7 @@
   >
     <h6 class="dropdown-header">Switch Project</h6>
     <div
-      *ngFor="let project of projects$ | async"
+      *ngFor="let project of projects$ | async as projects"
       class="dropdown-item-wrapper"
     >
       <button
@@ -31,7 +30,7 @@
           }}</span>
         </span>
         <button
-          *ngIf="(projects$ | async)!.length > 1"
+          *ngIf="canDelete(project, projects)"
           class="btn btn-sm btn-link text-danger p-0 ms-2 delete-btn"
           (click)="deleteProject($event, project.id)"
           title="Delete project"

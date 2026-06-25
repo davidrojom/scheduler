@@ -1,6 +1,15 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, map, of, shareReplay, switchMap, tap } from 'rxjs';
+import {
+  Observable,
+  catchError,
+  forkJoin,
+  map,
+  of,
+  shareReplay,
+  switchMap,
+  tap,
+} from 'rxjs';
 import { v4 } from 'uuid';
 
 import {
@@ -76,6 +85,7 @@ export class ApiBoardPersistence implements BoardPersistence {
   private _currentProject: Project | null = null;
   private _content: BoardContent = { ...EMPTY_CONTENT };
   private readonly _pendingCreates = new Map<string, Observable<BoardDto>>();
+  private _applyingSnapshot = false;
 
   private get baseUrl(): string {
     return `${environment.apiBaseUrl}/boards`;
@@ -212,6 +222,7 @@ export class ApiBoardPersistence implements BoardPersistence {
         if (index !== -1) {
           this._projects[index] = this._currentProject;
         }
+        this.beginSnapshot();
       }),
       map(() => undefined),
       catchError(() => {
@@ -220,6 +231,7 @@ export class ApiBoardPersistence implements BoardPersistence {
           this._currentProject = optimistic;
           this._content = { ...EMPTY_CONTENT };
         }
+        this.beginSnapshot();
         return of(undefined);
       })
     );
@@ -230,24 +242,252 @@ export class ApiBoardPersistence implements BoardPersistence {
   }
 
   setColumns(columns: BoardColumn[]): void {
+    const previous = this._content.columns;
     this._content = { ...this._content, columns };
+
+    const boardId = this._currentProject?.id;
+    if (this._applyingSnapshot || !boardId) {
+      return;
+    }
+    this.applyColumns(boardId, previous, columns);
   }
 
   setParticipants(participants: string[]): void {
+    const previous = this._content.participants;
     this._content = { ...this._content, participants };
+
+    const boardId = this._currentProject?.id;
+    if (this._applyingSnapshot || !boardId) {
+      return;
+    }
+    this.applyParticipants(boardId, previous, participants);
   }
 
   setTasks(tasks: Task[]): void {
+    const previous = this._content.tasks;
     this._content = { ...this._content, tasks };
+
+    const boardId = this._currentProject?.id;
+    if (this._applyingSnapshot || !boardId) {
+      return;
+    }
+    this.applyTasks(boardId, previous, tasks);
   }
 
   setConfig(config: BoardContentInput): void {
+    const previous = this._content;
+    const logo = config.logo ?? null;
     this._content = {
       columns: config.columns,
       tasks: config.tasks,
       participants: config.participants,
-      logo: config.logo ?? null,
+      logo,
     };
+
+    const boardId = this._currentProject?.id;
+    if (this._applyingSnapshot || !boardId) {
+      return;
+    }
+
+    const columnCreates = this.applyColumns(
+      boardId,
+      previous.columns,
+      config.columns
+    );
+    this.applyParticipants(boardId, previous.participants, config.participants);
+    this.applyLogo(boardId, previous.logo, logo);
+
+    // Tasks reference columns by FK, so any brand-new columns must be created
+    // before tasks that point at them (relevant to a full board import).
+    const syncTasks = () =>
+      this.applyTasks(boardId, previous.tasks, config.tasks);
+    if (columnCreates.length > 0) {
+      forkJoin(columnCreates)
+        .pipe(catchError(() => of(null)))
+        .subscribe({ next: syncTasks, error: syncTasks });
+    } else {
+      syncTasks();
+    }
+  }
+
+  /**
+   * Suppresses content writes for the synchronous rehydration that follows a
+   * board load: re-emitting columns rebuilds the scheduler form, whose
+   * valueChanges echo back through setColumns. Those echoes would otherwise be
+   * misread as user deletes/creates against the freshly loaded snapshot.
+   */
+  private beginSnapshot(): void {
+    this._applyingSnapshot = true;
+    queueMicrotask(() => {
+      this._applyingSnapshot = false;
+    });
+  }
+
+  private applyColumns(
+    boardId: string,
+    previous: BoardColumn[],
+    next: BoardColumn[]
+  ): Observable<unknown>[] {
+    const previousById = new Map(previous.map((c) => [c.id, c]));
+    const nextIds = new Set(next.map((c) => c.id));
+    const creates: Observable<unknown>[] = [];
+
+    for (const column of next) {
+      const existing = previousById.get(column.id);
+      if (!existing) {
+        const create$ = this.http
+          .post(`${this.baseUrl}/${boardId}/columns`, {
+            id: column.id,
+            title: column.title,
+          })
+          .pipe(shareReplay(1));
+        creates.push(create$);
+        this.fire(create$);
+      } else if (existing.title !== column.title) {
+        this.fire(
+          this.http.patch(`${this.baseUrl}/${boardId}/columns/${column.id}`, {
+            title: column.title,
+          })
+        );
+      }
+    }
+
+    for (const column of previous) {
+      if (!nextIds.has(column.id)) {
+        this.fire(
+          this.http.delete(`${this.baseUrl}/${boardId}/columns/${column.id}`)
+        );
+      }
+    }
+
+    const onlyReordered =
+      creates.length === 0 &&
+      previous.length === next.length &&
+      next.every((c) => previousById.has(c.id)) &&
+      next.some((c, i) => previous[i]?.id !== c.id);
+    if (onlyReordered) {
+      this.fire(
+        this.http.patch(`${this.baseUrl}/${boardId}/columns/reorder`, {
+          orderedIds: next.map((c) => c.id),
+        })
+      );
+    }
+
+    return creates;
+  }
+
+  private applyTasks(boardId: string, previous: Task[], next: Task[]): void {
+    const previousById = new Map(previous.map((t) => [t.id, t]));
+    const nextIds = new Set(next.map((t) => t.id));
+
+    for (const task of next) {
+      const existing = previousById.get(task.id);
+      const payload = this.toTaskPayload(task);
+      if (!existing) {
+        this.fire(
+          this.http.post(`${this.baseUrl}/${boardId}/tasks`, {
+            id: task.id,
+            ...payload,
+          })
+        );
+      } else if (this.taskChanged(existing, task)) {
+        this.fire(
+          this.http.patch(`${this.baseUrl}/${boardId}/tasks/${task.id}`, payload)
+        );
+      }
+    }
+
+    for (const task of previous) {
+      if (!nextIds.has(task.id)) {
+        this.fire(
+          this.http.delete(`${this.baseUrl}/${boardId}/tasks/${task.id}`)
+        );
+      }
+    }
+  }
+
+  private applyParticipants(
+    boardId: string,
+    previous: string[],
+    next: string[]
+  ): void {
+    const previousSet = new Set(previous);
+    const nextSet = new Set(next);
+
+    for (const name of next) {
+      if (!previousSet.has(name)) {
+        this.fire(
+          this.http.post(`${this.baseUrl}/${boardId}/participants`, { name })
+        );
+      }
+    }
+
+    for (const name of previous) {
+      if (!nextSet.has(name)) {
+        this.fire(
+          this.http.delete(`${this.baseUrl}/${boardId}/participants`, {
+            body: { name },
+          })
+        );
+      }
+    }
+  }
+
+  private applyLogo(
+    boardId: string,
+    previousLogo: string | null,
+    nextLogo: string | null
+  ): void {
+    if (previousLogo === nextLogo) {
+      return;
+    }
+
+    const config: ProjectConfig = {
+      ...(this._currentProject?.config ?? DEFAULT_PROJECT_CONFIG),
+      logo: nextLogo ?? undefined,
+    };
+
+    if (this._currentProject) {
+      this._currentProject = { ...this._currentProject, config };
+    }
+
+    this.fire(this.http.patch(`${this.baseUrl}/${boardId}`, { config }));
+  }
+
+  private toTaskPayload(task: Task): {
+    columnId: string;
+    title: string;
+    startHour: string;
+    endHour: string;
+    participants: string[];
+  } {
+    return {
+      columnId: task.columnId,
+      title: task.title,
+      startHour: this.toHourMinute(task.start),
+      endHour: this.toHourMinute(task.end),
+      participants: task.participants ?? [],
+    };
+  }
+
+  private taskChanged(previous: Task, next: Task): boolean {
+    return (
+      previous.columnId !== next.columnId ||
+      previous.title !== next.title ||
+      this.toHourMinute(previous.start) !== this.toHourMinute(next.start) ||
+      this.toHourMinute(previous.end) !== this.toHourMinute(next.end) ||
+      JSON.stringify(previous.participants ?? []) !==
+        JSON.stringify(next.participants ?? [])
+    );
+  }
+
+  private toHourMinute(value: Date | string): string {
+    const date = value instanceof Date ? value : new Date(value);
+    return `${date.getHours()}:${date.getMinutes()}`;
+  }
+
+  private fire(request$: Observable<unknown>): void {
+    request$.subscribe({ error: () => undefined });
   }
 
   private toProject(

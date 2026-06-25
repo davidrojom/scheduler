@@ -10,3 +10,13 @@ export interface MeResponse {
   name: string | null;
   avatarUrl: string | null;
 }
+
+export interface ImpersonateInput {
+  email: string;
+  name?: string;
+}
+
+export interface ImpersonateResponse {
+  token: string;
+  user: MeResponse;
+}

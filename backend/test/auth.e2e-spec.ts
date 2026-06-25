@@ -1,9 +1,11 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Server } from 'http';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { AuthService } from '../src/auth/auth.service';
+import { TestModeGuard } from '../src/auth/guards/test-mode.guard';
 import { Database, KYSELY } from '../src/database/database.module';
 import {
   createTestDatabase,
@@ -109,6 +111,120 @@ describe('Auth (e2e)', () => {
         .get('/api/auth/me')
         .set('Authorization', 'Bearer not.a.valid.jwt')
         .expect(401);
+    });
+  });
+
+  describe('POST /api/auth/impersonate (AUTH_TEST_MODE=true)', () => {
+    it('returns a well-formed JWT and the impersonated user', async () => {
+      const res = await request(httpServer)
+        .post('/api/auth/impersonate')
+        .send({ email: 'validator@example.com', name: 'Validator' });
+
+      expect([200, 201]).toContain(res.status);
+
+      const body = res.body as {
+        token: string;
+        user: {
+          id: string;
+          email: string;
+          name: string | null;
+          avatarUrl: string | null;
+        };
+      };
+
+      expect(typeof body.token).toBe('string');
+      expect(body.token.split('.')).toHaveLength(3);
+      expect(body.user.id).toBeTruthy();
+      expect(body.user.email).toBe('validator@example.com');
+      expect(body.user.name).toBe('Validator');
+
+      // The issued token must authenticate against /api/auth/me.
+      await request(httpServer)
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${body.token}`)
+        .expect(200);
+    });
+
+    it('rejects a body with no email with a 400 and issues no token', async () => {
+      const res = await request(httpServer)
+        .post('/api/auth/impersonate')
+        .send({})
+        .expect(400);
+
+      expect((res.body as { token?: string }).token).toBeUndefined();
+    });
+
+    it('rejects an invalid email with a 400', async () => {
+      await request(httpServer)
+        .post('/api/auth/impersonate')
+        .send({ email: 'not-an-email' })
+        .expect(400);
+    });
+
+    it('upserts a single persistent user, returning the same id on repeat calls (idempotent by email)', async () => {
+      const first = await request(httpServer)
+        .post('/api/auth/impersonate')
+        .send({ email: 'persist@test.dev', name: 'Persist' });
+      const second = await request(httpServer)
+        .post('/api/auth/impersonate')
+        .send({ email: 'persist@test.dev', name: 'Persist' });
+
+      const firstUser = (first.body as { user: { id: string } }).user;
+      const secondUser = (second.body as { user: { id: string } }).user;
+
+      expect(firstUser.id).toBe(secondUser.id);
+
+      const rows = await db
+        .selectFrom('users')
+        .selectAll()
+        .where('email', '=', 'persist@test.dev')
+        .execute();
+      expect(rows).toHaveLength(1);
+    });
+  });
+
+  describe('POST /api/auth/impersonate (test mode disabled)', () => {
+    let disabledApp: INestApplication;
+    let disabledServer: Server;
+
+    beforeAll(async () => {
+      const disabledModule: TestingModule = await Test.createTestingModule({
+        imports: [AppModule],
+      })
+        .overrideProvider(KYSELY)
+        .useValue(db)
+        .overrideGuard(TestModeGuard)
+        .useValue(
+          new TestModeGuard({
+            get: () => undefined,
+          } as unknown as ConfigService),
+        )
+        .compile();
+
+      disabledApp = disabledModule.createNestApplication();
+      disabledApp.setGlobalPrefix('api');
+      disabledApp.useGlobalPipes(
+        new ValidationPipe({
+          whitelist: true,
+          forbidNonWhitelisted: true,
+          transform: true,
+        }),
+      );
+      await disabledApp.init();
+      disabledServer = disabledApp.getHttpServer() as Server;
+    }, 30000);
+
+    afterAll(async () => {
+      await disabledApp.close();
+    });
+
+    it('is inert: returns 404 and issues no token', async () => {
+      const res = await request(disabledServer)
+        .post('/api/auth/impersonate')
+        .send({ email: 'validator@example.com', name: 'Validator' })
+        .expect(404);
+
+      expect((res.body as { token?: string }).token).toBeUndefined();
     });
   });
 });

@@ -1,12 +1,14 @@
-import { Controller, Get, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserDto } from '../users/users.types';
-import { MeResponse } from './auth.types';
+import { ImpersonateResponse, MeResponse } from './auth.types';
 import { AuthService } from './auth.service';
+import { ImpersonateDto } from './dto/impersonate.dto';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { TestModeGuard } from './guards/test-mode.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -30,6 +32,12 @@ export class AuthController {
     const token = await this.authService.login(user);
     const frontendUrl = this.config.getOrThrow<string>('FRONTEND_URL');
     res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+  }
+
+  @Post('impersonate')
+  @UseGuards(TestModeGuard)
+  impersonate(@Body() dto: ImpersonateDto): Promise<ImpersonateResponse> {
+    return this.authService.impersonate(dto);
   }
 
   @Get('me')

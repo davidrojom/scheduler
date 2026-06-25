@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { TestModeGuard } from './guards/test-mode.guard';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
@@ -29,6 +30,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     GoogleStrategy,
     JwtAuthGuard,
     GoogleAuthGuard,
+    TestModeGuard,
   ],
   exports: [AuthService, JwtAuthGuard, JwtModule, PassportModule],
 })

@@ -200,8 +200,16 @@ export class ApiBoardPersistence implements BoardPersistence {
 
   deleteProject(id: string): void {
     this._projects = this._projects.filter((p) => p.id !== id);
+    this._pendingCreates.delete(id);
     if (this._currentProject?.id === id) {
       this._currentProject = this._projects[0] ?? null;
+      // No replacement board remains: drop the deleted board's cached content
+      // so getConfig() rehydrates an empty canvas instead of stale columns/
+      // tasks/participants. A replacement board loads its content via
+      // switchProject.
+      if (!this._currentProject) {
+        this._content = { ...EMPTY_CONTENT };
+      }
     }
 
     this.http

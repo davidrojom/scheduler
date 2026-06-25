@@ -1,9 +1,19 @@
 import { Injectable } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { BehaviorSubject, Observable, map } from 'rxjs';
+import {
+  BehaviorSubject,
+  Observable,
+  filter,
+  map,
+  of,
+  switchMap,
+  take,
+} from 'rxjs';
 import { Project, ProjectConfig } from '../models/project.model';
+import { User } from '../models/user.model';
 import { PersistenceFacade } from '../persistence/persistence-facade.service';
 import { ProjectUpdate } from '../persistence/board-persistence';
+import { BoardMigrationService } from '../persistence/board-migration.service';
 import { AuthService } from './auth.service';
 
 @Injectable({
@@ -31,14 +41,31 @@ export class ProjectService {
 
   constructor(
     private readonly persistence: PersistenceFacade,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly migration: BoardMigrationService
   ) {
     // Auth state drives which board set is shown: anonymous loads localStorage
-    // synchronously; authenticated (re)fetches DB boards. Emits its current
-    // value immediately, so the anonymous initial load stays synchronous.
+    // synchronously; authenticated runs the first-login local→DB migration
+    // (once the user id is known) BEFORE (re)fetching DB boards so migrated
+    // boards are already in the listing. switchMap cancels a pending migration
+    // if the user logs out before /auth/me resolves. The initial false value is
+    // emitted synchronously, so the anonymous initial load stays synchronous.
     this.authService.authState$
-      .pipe(takeUntilDestroyed())
+      .pipe(
+        switchMap((authenticated) =>
+          authenticated ? this.migrateOnLogin$() : of(undefined)
+        ),
+        takeUntilDestroyed()
+      )
       .subscribe(() => this.reloadFromPersistence());
+  }
+
+  private migrateOnLogin$(): Observable<void> {
+    return this.authService.currentUser$.pipe(
+      filter((user): user is User => !!user),
+      take(1),
+      switchMap((user) => this.migration.migrateLocalBoards(user.id))
+    );
   }
 
   createProject(name: string, config?: Partial<ProjectConfig>): Project {

@@ -7,6 +7,8 @@ import {
   BoardContent,
   BoardContentInput,
   BoardPersistence,
+  MigrationBoardEntry,
+  MigrationTask,
   ProjectUpdate,
 } from './board-persistence';
 import { LocalstorageService } from '../services/localstorage.service';
@@ -220,6 +222,54 @@ export class LocalBoardPersistence implements BoardPersistence {
       this.logoService.setLogo(config.logo);
     } else {
       this.logoService.removeLogo();
+    }
+  }
+
+  /**
+   * Snapshots every stored local board with its content for the first-login
+   * migration. Reads localStorage directly (no ensureLoaded) so it never
+   * fabricates a default project as a side effect, and never mutates or
+   * deletes local data. Stored tasks already hold "H:M" strings, so they map
+   * straight onto the import wire format.
+   */
+  exportForMigration(): MigrationBoardEntry[] {
+    const projectsJson = localStorage.getItem(PROJECTS_STORAGE_KEY);
+    if (!projectsJson) {
+      return [];
+    }
+
+    let projects: Project[];
+    try {
+      projects = JSON.parse(projectsJson);
+    } catch {
+      return [];
+    }
+    if (!Array.isArray(projects)) {
+      return [];
+    }
+
+    return projects.map((project) => ({
+      board: {
+        id: project.id,
+        name: project.name,
+        config: { ...DEFAULT_PROJECT_CONFIG, ...project.config },
+      },
+      columns: this.readArray<BoardColumn>(`${project.id}_columns`),
+      tasks: this.readArray<MigrationTask>(`${project.id}_tasks`),
+      participants: this.readArray<string>(`${project.id}_participants`),
+    }));
+  }
+
+  private readArray<T>(key: string): T[] {
+    const raw = localStorage.getItem(key);
+    if (!raw) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed as T[]) : [];
+    } catch {
+      return [];
     }
   }
 

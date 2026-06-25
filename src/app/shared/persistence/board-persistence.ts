@@ -23,6 +23,27 @@ export interface BoardContentInput {
 
 export type ProjectUpdate = Partial<Omit<Project, 'id' | 'createdAt'>>;
 
+export interface MigrationTask {
+  id: string;
+  columnId: string;
+  title: string;
+  startHour: string;
+  endHour: string;
+  participants: string[];
+}
+
+/**
+ * A local board plus its content shaped for POST /api/boards/import. Times stay
+ * as the stored non-zero-padded "H:M" strings so the backend persists them
+ * verbatim; ids are the original client uuids so the import is idempotent.
+ */
+export interface MigrationBoardEntry {
+  board: { id: string; name: string; config: ProjectConfig };
+  columns: BoardColumn[];
+  tasks: MigrationTask[];
+  participants: string[];
+}
+
 /**
  * Strategy that backs every board lifecycle and content operation. Two
  * implementations exist: localStorage (anonymous) and REST (authenticated).

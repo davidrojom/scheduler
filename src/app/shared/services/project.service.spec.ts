@@ -7,24 +7,42 @@ import { BehaviorSubject, Observable, distinctUntilChanged } from 'rxjs';
 
 import { ProjectService } from './project.service';
 import { AuthService } from './auth.service';
+import { LocalBoardPersistence } from '../persistence/local-board-persistence.service';
 import { Project } from '../models/project.model';
+import { User } from '../models/user.model';
 import { environment } from '../../../environments/environment';
 
 const ISO = '2024-01-01T00:00:00.000Z';
+const TEST_USER: User = {
+  id: 'u1',
+  email: 'alice@example.com',
+  name: 'Alice',
+  avatarUrl: null,
+};
 
 class FakeAuthService {
   private readonly _authState$ = new BehaviorSubject<boolean>(false);
   readonly authState$: Observable<boolean> = this._authState$.pipe(
     distinctUntilChanged()
   );
+  private readonly _currentUser$ = new BehaviorSubject<User | null>(null);
+  readonly currentUser$: Observable<User | null> =
+    this._currentUser$.asObservable();
   private _authenticated = false;
 
   get isAuthenticated(): boolean {
     return this._authenticated;
   }
 
-  setAuthenticated(value: boolean): void {
+  get currentUser(): User | null {
+    return this._currentUser$.value;
+  }
+
+  setAuthenticated(value: boolean, user: User = TEST_USER): void {
     this._authenticated = value;
+    // Set the user before flipping auth state so the migration step can read
+    // the user id as soon as the persistence reload reacts to authState$.
+    this._currentUser$.next(value ? user : null);
     this._authState$.next(value);
   }
 }
@@ -87,6 +105,7 @@ describe('ProjectService (DB boards)', () => {
   it('populates the switcher from GET /api/boards after authentication', () => {
     const service = createService();
 
+    localStorage.setItem(`scheduler_migrated_${TEST_USER.id}`, 'true');
     auth.setAuthenticated(true);
 
     const listReq = httpMock.expectOne(boardsUrl);
@@ -112,6 +131,7 @@ describe('ProjectService (DB boards)', () => {
   it('reverts to localStorage boards (no DB) on logout', () => {
     const service = createService();
 
+    localStorage.setItem(`scheduler_migrated_${TEST_USER.id}`, 'true');
     auth.setAuthenticated(true);
     httpMock
       .expectOne(boardsUrl)
@@ -129,6 +149,7 @@ describe('ProjectService (DB boards)', () => {
   it('allows deleting the last board when authenticated (issues DELETE)', () => {
     const service = createService();
 
+    localStorage.setItem(`scheduler_migrated_${TEST_USER.id}`, 'true');
     auth.setAuthenticated(true);
     httpMock
       .expectOne(boardsUrl)
@@ -156,5 +177,58 @@ describe('ProjectService (DB boards)', () => {
     expect(window.alert).toHaveBeenCalled();
     expect(service.projects.length).toBe(1);
     httpMock.expectNone(() => true);
+  });
+
+  it('imports local boards on first login, then loads DB boards (no duplicates on relogin)', () => {
+    const service = createService();
+    const local = TestBed.inject(LocalBoardPersistence);
+    const localBoardId = local.getCurrentProject()!.id;
+    local.setColumns([{ id: 'col-x', title: 'CROSS-MIGRATE' }]);
+
+    auth.setAuthenticated(true);
+
+    const importReq = httpMock.expectOne(`${boardsUrl}/import`);
+    expect(importReq.request.method).toBe('POST');
+    expect(JSON.stringify(importReq.request.body)).toContain(localBoardId);
+    expect(JSON.stringify(importReq.request.body)).toContain('CROSS-MIGRATE');
+    importReq.flush({ boards: [{ id: localBoardId }] });
+
+    httpMock.expectOne(boardsUrl).flush([
+      {
+        id: localBoardId,
+        name: 'Default Project',
+        myRole: 'owner',
+        config: {},
+        updatedAt: ISO,
+      },
+    ]);
+    httpMock
+      .expectOne(`${boardsUrl}/${localBoardId}`)
+      .flush(detailDto(localBoardId, 'Default Project'));
+
+    let projects: Project[] = [];
+    service.projects$.subscribe((p) => (projects = p));
+    expect(projects.map((p) => p.id)).toEqual([localBoardId]);
+
+    // Logout returns to the intact local boards with no backend calls.
+    auth.setAuthenticated(false);
+    httpMock.expectNone(() => true);
+    expect(service.projects.some((p) => p.id === localBoardId)).toBeTrue();
+
+    // Re-authenticating as the same user must NOT import again (idempotent).
+    auth.setAuthenticated(true);
+    httpMock.expectNone(`${boardsUrl}/import`);
+    httpMock.expectOne(boardsUrl).flush([
+      {
+        id: localBoardId,
+        name: 'Default Project',
+        myRole: 'owner',
+        config: {},
+        updatedAt: ISO,
+      },
+    ]);
+    httpMock
+      .expectOne(`${boardsUrl}/${localBoardId}`)
+      .flush(detailDto(localBoardId, 'Default Project'));
   });
 });

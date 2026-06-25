@@ -92,6 +92,30 @@ describe('UsersService (against scheduler_test)', () => {
       expect(users).toHaveLength(1);
     });
 
+    it('returns the same user when the same google_id logs in with a changed email', async () => {
+      const first = await service.upsertByGoogle({
+        googleId: 'g-shift',
+        email: 'old@example.com',
+        name: 'Grace',
+        avatarUrl: 'https://example.com/grace.png',
+      });
+
+      const second = await service.upsertByGoogle({
+        googleId: 'g-shift',
+        email: 'new@example.com',
+      });
+
+      expect(second.id).toBe(first.id);
+      expect(second.email).toBe('new@example.com');
+      expect(second.googleId).toBe('g-shift');
+      expect(second.name).toBe('Grace');
+      expect(second.avatarUrl).toBe('https://example.com/grace.png');
+
+      const users = await db.selectFrom('users').selectAll().execute();
+      expect(users).toHaveLength(1);
+      expect(users[0].email).toBe('new@example.com');
+    });
+
     it('links a google_id onto a user previously created by email', async () => {
       const byEmail = await service.upsertByEmail({
         email: 'erin@example.com',

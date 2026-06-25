@@ -15,7 +15,6 @@ import {
   moveItemInArray,
 } from '@angular/cdk/drag-drop';
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import { JsonPipe } from '@angular/common';
 import { ScheduleComponent } from './components/schedule/schedule.component';
 import {
   FormArray,
@@ -37,6 +36,7 @@ import { MobileDetectionService } from '../../shared/services/mobile-detection.s
 import { ParticipantStatsModalComponent } from './components/modals/participant-stats/participant-stats-modal.component';
 import { SettingsComponent } from './components/modals/settings/settings.component';
 import { ProjectSwitcherComponent } from './components/project-switcher/project-switcher.component';
+import { AuthMenuComponent } from '../../shared/ui/components/auth-menu/auth-menu.component';
 
 @Component({
   selector: 'sch-scheduler',
@@ -53,6 +53,7 @@ import { ProjectSwitcherComponent } from './components/project-switcher/project-
     FormsModule,
     ReactiveFormsModule,
     ProjectSwitcherComponent,
+    AuthMenuComponent,
   ],
 })
 export class SchedulerComponent implements OnInit {

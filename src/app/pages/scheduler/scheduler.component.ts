@@ -25,7 +25,9 @@ import {
   Validators,
 } from '@angular/forms';
 import { v4 } from 'uuid';
+import { distinctUntilChanged, map, skip } from 'rxjs';
 import { ColumnsService } from '../../shared/services/columns.service';
+import { ProjectService } from '../../shared/services/project.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TasksService } from '../../shared/services/tasks.service';
 import { ParticipantsService } from '../../shared/services/participants.service';
@@ -86,13 +88,25 @@ export class SchedulerComponent implements OnInit {
     private readonly exportService: ExportService,
     private readonly destroyRef: DestroyRef,
     private readonly modal: NgbModal,
-    private readonly mobileDetectionService: MobileDetectionService
+    private readonly mobileDetectionService: MobileDetectionService,
+    private readonly projectService: ProjectService
   ) {}
   ngOnInit(): void {
     this.columnsService.columns$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((columns) => {
         this.setColumns(columns);
+      });
+
+    this.projectService.currentProject$
+      .pipe(
+        map((project) => project?.id ?? null),
+        distinctUntilChanged(),
+        skip(1),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => {
+        this.reloadBoard();
       });
 
     this.form.controls.columns.valueChanges
@@ -226,6 +240,10 @@ export class SchedulerComponent implements OnInit {
   import(hash: string) {
     const data = JSON.parse(atob(hash));
     this.configService.setConfig(data);
+    this.reloadBoard();
+  }
+
+  private reloadBoard() {
     this.columnsService.setColumns();
     this.tasksService.setTasks();
     this.participantsService.setParticipants();

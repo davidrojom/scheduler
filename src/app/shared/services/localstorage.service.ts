@@ -1,5 +1,6 @@
-import { Injectable, Injector } from '@angular/core';
-import { ProjectService } from './project.service';
+import { Injectable } from '@angular/core';
+
+const CURRENT_PROJECT_KEY = 'scheduler_current_project_id';
 
 interface StoredTask {
   id: string;
@@ -33,25 +34,10 @@ type SetConfig =
   providedIn: 'root',
 })
 export class LocalstorageService {
-  private projectService?: ProjectService;
-
-  constructor(private injector: Injector) {}
-
   private getProjectKey(scope: string): string {
-    try {
-      if (!this.projectService) {
-        this.projectService = this.injector.get(ProjectService);
-      }
-      const projectId = this.projectService?.currentProject?.id || 'default';
-      return `${projectId}_${scope}`;
-    } catch {
-      const currentProjectId = localStorage.getItem(
-        'scheduler_current_project_id'
-      );
-      return currentProjectId
-        ? `${currentProjectId}_${scope}`
-        : `default_${scope}`;
-    }
+    const projectId =
+      localStorage.getItem(CURRENT_PROJECT_KEY) || 'default';
+    return `${projectId}_${scope}`;
   }
   setAll(config: {
     columns: StoredColumn[];

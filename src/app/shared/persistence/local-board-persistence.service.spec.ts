@@ -89,6 +89,52 @@ describe('LocalBoardPersistence', () => {
     ]);
   });
 
+  it('exports every local board with its content for migration (H:M preserved)', () => {
+    const current = persistence.getCurrentProject()!;
+    persistence.setColumns([{ id: 'c1', title: 'Stage' }]);
+    const start = new Date();
+    start.setHours(9, 5, 0, 0);
+    const end = new Date();
+    end.setHours(10, 0, 0, 0);
+    persistence.setTasks([
+      {
+        id: 't1',
+        columnId: 'c1',
+        title: 'Talk',
+        start,
+        end,
+        participants: ['Alice'],
+      },
+    ]);
+    persistence.setParticipants(['Alice']);
+
+    const exported = persistence.exportForMigration();
+
+    expect(exported.length).toBe(1);
+    const entry = exported[0];
+    expect(entry.board.id).toBe(current.id);
+    expect(entry.board.name).toBe('Default Project');
+    expect(entry.columns).toEqual([{ id: 'c1', title: 'Stage' }]);
+    expect(entry.tasks[0]).toEqual(
+      jasmine.objectContaining({
+        id: 't1',
+        columnId: 'c1',
+        title: 'Talk',
+        startHour: '9:5',
+        endHour: '10:0',
+        participants: ['Alice'],
+      })
+    );
+    expect(entry.participants).toEqual(['Alice']);
+  });
+
+  it('exports nothing (and creates no default project) when storage is empty', () => {
+    localStorage.clear();
+
+    expect(persistence.exportForMigration()).toEqual([]);
+    expect(localStorage.getItem('scheduler_projects')).toBeNull();
+  });
+
   it('removes a deleted project and its namespaced content keys', () => {
     const second = persistence.createProject('Second');
     persistence.switchProject(second.id).subscribe();

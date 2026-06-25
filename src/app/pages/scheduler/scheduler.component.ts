@@ -25,7 +25,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { v4 } from 'uuid';
-import { distinctUntilChanged, map, skip } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs';
 import { ColumnsService } from '../../shared/services/columns.service';
 import { ProjectService } from '../../shared/services/project.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -102,7 +102,6 @@ export class SchedulerComponent implements OnInit {
       .pipe(
         map((project) => project?.id ?? null),
         distinctUntilChanged(),
-        skip(1),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(() => {

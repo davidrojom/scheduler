@@ -1,3 +1,5 @@
+export type BoardRole = 'owner' | 'editor' | 'viewer';
+
 export interface ProjectConfig {
   dayStartHour: number;
   dayEndHour: number;
@@ -11,6 +13,7 @@ export interface Project {
   config: ProjectConfig;
   createdAt: Date;
   updatedAt: Date;
+  myRole?: BoardRole;
 }
 
 export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {

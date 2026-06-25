@@ -35,8 +35,14 @@ export interface BoardPersistence {
   getProjects(): Project[];
   getCurrentProject(): Project | null;
   getProjectConfig(projectId?: string): ProjectConfig;
+  /**
+   * (Re)loads the authoritative board list for the active strategy. Local
+   * returns the in-memory localStorage projects synchronously; Api fetches
+   * GET /api/boards. Used to (re)populate the switcher when auth state changes.
+   */
+  refreshBoards(): Observable<Project[]>;
   createProject(name: string, config?: Partial<ProjectConfig>): Project;
-  updateProject(id: string, updates: ProjectUpdate): Project | null;
+  updateProject(id: string, updates: ProjectUpdate): Observable<Project | null>;
   deleteProject(id: string): void;
   switchProject(id: string): Observable<void>;
 

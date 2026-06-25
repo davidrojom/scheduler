@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProjectService } from '../../../../shared/services/project.service';
+import { AuthService } from '../../../../shared/services/auth.service';
 import { Project } from '../../../../shared/models/project.model';
 import { Observable } from 'rxjs';
 import { ScrollableTextDirective } from '../../../../shared/directives/scrollable-text.directive';
@@ -17,11 +18,21 @@ export class ProjectSwitcherComponent implements OnInit {
   currentProject$!: Observable<Project | null>;
   showDropdown = false;
 
-  constructor(private projectService: ProjectService) {}
+  constructor(
+    private projectService: ProjectService,
+    private authService: AuthService
+  ) {}
 
   ngOnInit(): void {
     this.projects$ = this.projectService.projects$;
     this.currentProject$ = this.projectService.currentProject$;
+  }
+
+  canDelete(project: Project, projects: Project[]): boolean {
+    if (this.authService.isAuthenticated) {
+      return project.myRole === 'owner';
+    }
+    return projects.length > 1;
   }
 
   toggleDropdown(): void {

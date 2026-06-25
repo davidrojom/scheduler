@@ -1,5 +1,6 @@
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
+import { UsersService } from '../users/users.service';
 import { UserDto } from '../users/users.types';
 import { AuthService } from './auth.service';
 
@@ -21,11 +22,16 @@ function makeUser(overrides: Partial<UserDto> = {}): UserDto {
 describe('AuthService', () => {
   let service: AuthService;
   let jwtService: JwtService;
+  let upsertByEmail: jest.Mock;
 
   beforeEach(async () => {
+    upsertByEmail = jest.fn();
     const moduleRef = await Test.createTestingModule({
       imports: [JwtModule.register({ secret: JWT_SECRET })],
-      providers: [AuthService],
+      providers: [
+        AuthService,
+        { provide: UsersService, useValue: { upsertByEmail } },
+      ],
     }).compile();
 
     service = moduleRef.get(AuthService);
@@ -51,6 +57,51 @@ describe('AuthService', () => {
     expect(() => {
       jwtService.verify(token, { secret: 'wrong-secret' });
     }).toThrow();
+  });
+
+  describe('impersonate', () => {
+    it('upserts the user by email and returns a real JWT plus the user', async () => {
+      const user = makeUser({
+        email: 'validator@example.com',
+        name: 'Validator',
+      });
+      upsertByEmail.mockResolvedValue(user);
+
+      const result = await service.impersonate({
+        email: 'validator@example.com',
+        name: 'Validator',
+      });
+
+      expect(upsertByEmail).toHaveBeenCalledWith({
+        email: 'validator@example.com',
+        name: 'Validator',
+      });
+      expect(result.user).toEqual({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+      });
+      expect(result.token.split('.')).toHaveLength(3);
+
+      const decoded = jwtService.verify<JwtPayloadForTest>(result.token, {
+        secret: JWT_SECRET,
+      });
+      expect(decoded.sub).toBe(user.id);
+      expect(decoded.email).toBe(user.email);
+    });
+
+    it('passes an undefined name through to the upsert', async () => {
+      const user = makeUser({ email: 'noname@example.com', name: null });
+      upsertByEmail.mockResolvedValue(user);
+
+      await service.impersonate({ email: 'noname@example.com' });
+
+      expect(upsertByEmail).toHaveBeenCalledWith({
+        email: 'noname@example.com',
+        name: undefined,
+      });
+    });
   });
 });
 

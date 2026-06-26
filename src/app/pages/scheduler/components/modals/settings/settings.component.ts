@@ -199,14 +199,17 @@ export class SettingsComponent implements OnInit {
       logo: this.logoContent || undefined,
     };
 
+    // updateProject pushes the new name/config into currentProject$ synchronously,
+    // so the switcher label and the calendar grid rehydrate reactively. Close the
+    // modal once the persistence call settles, without a full page reload.
     this.projectService
       .updateProject(currentProject.id, {
         name: formValue.name,
         config: updatedConfig,
       })
       .subscribe({
-        next: () => window.location.reload(),
-        error: () => window.location.reload(),
+        next: () => this.activeModal.close(),
+        error: () => this.activeModal.close(),
       });
   }
 

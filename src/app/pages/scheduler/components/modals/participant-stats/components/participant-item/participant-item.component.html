@@ -1,7 +1,10 @@
 <div
   class="bg-gray-50 rounded-lg overflow-hidden cursor-pointer"
   [attr.id]="id"
+  role="button"
+  tabindex="0"
   (click)="onToggleExpanded()"
+  (keyup.enter)="onToggleExpanded()"
   data-umami-event="toggle-participant-expanded"
 >
   <div

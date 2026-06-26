@@ -1,14 +1,9 @@
 import { Injectable } from '@angular/core';
-import { BLANK_PDF, type Template } from '@pdfme/common';
+import { BLANK_PDF, type Template, type Schema } from '@pdfme/common';
 import { generate } from '@pdfme/generator';
 import { format } from 'date-fns';
 import { table, text, svg } from '@pdfme/schemas';
-import {
-  BlobWriter,
-  ZipWriter,
-  Uint8ArrayReader,
-  BlobReader,
-} from '@zip.js/zip.js';
+import { BlobWriter, ZipWriter, Uint8ArrayReader } from '@zip.js/zip.js';
 import { toBlob } from 'html-to-image';
 import { ProjectService } from './project.service';
 
@@ -54,7 +49,7 @@ export class ExportService {
   private getParticipantTemplate(): Template {
     const logo = this.projectService.currentProject?.config.logo;
 
-    const baseSchemas: any[] = [
+    const baseSchemas: Schema[] = [
       {
         name: 'title',
         type: 'text',

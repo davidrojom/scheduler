@@ -10,8 +10,6 @@ const LOGO_STORAGE_KEY = 'scheduler_logo';
 export class LogoService {
   private logoSubject = new BehaviorSubject<string | null>(this.loadLogo());
 
-  constructor() {}
-
   getLogo$(): Observable<string | null> {
     return this.logoSubject.asObservable();
   }

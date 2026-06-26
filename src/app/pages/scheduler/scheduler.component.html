@@ -48,13 +48,15 @@
   </nav>
 
   @if (mobileMenuOpen) {
-  <div
-    class="fixed inset-0 bg-black bg-opacity-10 z-40"
+  <button
+    type="button"
+    class="fixed inset-0 bg-black bg-opacity-10 z-40 w-full cursor-default"
+    aria-label="Close menu"
     (click)="closeMobileMenu()"
+  ></button>
+  <div
+    class="fixed top-[76px] bg-gray-800 p-3 flex flex-col gap-2 shadow-lg max-w-md z-50"
   >
-    <div
-      class="fixed top-[76px] bg-gray-800 p-3 flex flex-col gap-2 shadow-lg max-w-md"
-    >
       @if (canEdit$ | async) {
       <button
         (click)="open(wipeConfirmation); closeMobileMenu()"
@@ -107,7 +109,6 @@
         <i class="ph ph-users text-xl"></i>
         <span>Participants</span>
       </button>
-    </div>
   </div>
   }
   <div class="mx-3 overflow-x-auto h-full">

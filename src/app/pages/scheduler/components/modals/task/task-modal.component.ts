@@ -16,7 +16,6 @@ import {
   getHours,
   getMinutes,
   isBefore,
-  areIntervalsOverlapping,
 } from 'date-fns';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ParticipantsService } from '../../../../../shared/services/participants.service';
@@ -30,6 +29,8 @@ export interface Task {
   end: Date;
   participants: string[];
 }
+
+type ParticipantSelection = string | { name: string };
 
 @Component({
   selector: 'sch-task-modal',
@@ -99,11 +100,9 @@ export class TaskModalComponent implements OnInit {
     this.form.controls.participants.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((participants) => {
-        for (const participant of participants) {
+        for (const participant of participants as ParticipantSelection[]) {
           const participantName =
-            typeof participant === 'string'
-              ? participant
-              : (participant as any).name;
+            typeof participant === 'string' ? participant : participant.name;
           this.participantsService.createIfNotExists(participantName);
         }
         this.checkConflicts();
@@ -299,10 +298,7 @@ export class TaskModalComponent implements OnInit {
     return this.conflictedParticipants.has(participant);
   }
 
-  getParticipantName(item: any): string {
-    if (typeof item === 'string') {
-      return item;
-    }
-    return item?.name || item;
+  getParticipantName(item: ParticipantSelection): string {
+    return typeof item === 'string' ? item : item.name;
   }
 }

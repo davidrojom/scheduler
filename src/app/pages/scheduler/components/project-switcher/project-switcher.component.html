@@ -8,11 +8,7 @@
     {{ (currentProject$ | async)?.name || 'Boards' }}
   </button>
 
-  <div
-    class="dropdown-menu dropdown-menu-end"
-    [class.show]="showDropdown"
-    (click)="$event.stopPropagation()"
-  >
+  <div class="dropdown-menu dropdown-menu-end" [class.show]="showDropdown">
     <h6 class="dropdown-header">Switch Project</h6>
     <div
       *ngFor="let project of projects$ | async as projects"
@@ -55,8 +51,10 @@
   </div>
 </div>
 
-<div
+<button
   *ngIf="showDropdown"
+  type="button"
   class="dropdown-backdrop"
+  aria-label="Close boards menu"
   (click)="showDropdown = false"
-></div>
+></button>

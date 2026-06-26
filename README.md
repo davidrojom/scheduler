@@ -120,7 +120,7 @@ The project is a **pnpm monorepo**: the Angular app lives in `apps/frontend` (`@
 
 - **Node.js** 22 or higher
 - **pnpm** 10 or higher (`corepack enable` will provide the pinned version)
-- **PostgreSQL** 16 running locally on port `5432`
+- **PostgreSQL** 16 on port `5432` — via the bundled `docker-compose.yml` (recommended) or a native install
 
 ### 1. Clone and install
 
@@ -135,6 +135,15 @@ pnpm install
 > The frontend alone is enough to run the app anonymously. The steps below add the backend for accounts, persistence, and collaboration.
 
 ### 2. Create the databases
+
+**Option A — Docker (recommended).** Starts Postgres 16 and creates both `scheduler` and
+`scheduler_test` (plus the `pgcrypto` extension) on first run:
+
+```bash
+docker compose up -d    # postgres on localhost:5432, user/password: postgres/postgres
+```
+
+**Option B — native Postgres.**
 
 ```bash
 createdb scheduler

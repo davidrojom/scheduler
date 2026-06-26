@@ -147,6 +147,38 @@ describe('InvitesService (against scheduler_test)', () => {
       );
       expect(await memberRole(outsiderId)).toBeNull();
     });
+
+    it('never creates a membership when a revoke commits while accept is in flight (no TOCTOU window)', async () => {
+      const invite = await invites.create(boardId, ownerId, 'viewer');
+
+      const revokeTrx = await db.startTransaction().execute();
+      let committed = false;
+      try {
+        await revokeTrx
+          .updateTable('board_invites')
+          .set({ revoked: true })
+          .where('id', '=', invite.id)
+          .execute();
+
+        const outcome = invites
+          .accept(invite.token, outsiderId)
+          .then(() => 'accepted' as const)
+          .catch((err: unknown) => err);
+
+        await new Promise((resolve) => setTimeout(resolve, 200));
+
+        await revokeTrx.commit().execute();
+        committed = true;
+
+        await expect(outcome).resolves.toBeInstanceOf(NotFoundException);
+      } finally {
+        if (!committed) {
+          await revokeTrx.rollback().execute();
+        }
+      }
+
+      expect(await memberRole(outsiderId)).toBeNull();
+    });
   });
 
   describe('revoke', () => {

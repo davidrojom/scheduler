@@ -70,17 +70,18 @@ export class InvitesService {
   }
 
   async accept(token: string, userId: string): Promise<AcceptInviteDto> {
-    const invite = await this.db
-      .selectFrom('board_invites')
-      .selectAll()
-      .where('token', '=', token)
-      .executeTakeFirst();
+    return this.db.transaction().execute(async (trx) => {
+      const invite = await trx
+        .selectFrom('board_invites')
+        .selectAll()
+        .where('token', '=', token)
+        .forUpdate()
+        .executeTakeFirst();
 
-    if (!invite || invite.revoked || this.isExpired(invite.expires_at)) {
-      throw new NotFoundException('Invite is invalid or no longer valid');
-    }
+      if (!invite || invite.revoked || this.isExpired(invite.expires_at)) {
+        throw new NotFoundException('Invite is invalid or no longer valid');
+      }
 
-    await this.db.transaction().execute(async (trx) => {
       const existing = await trx
         .selectFrom('board_members')
         .select('role')
@@ -98,10 +99,7 @@ export class InvitesService {
           })
           .onConflict((oc) => oc.columns(['board_id', 'user_id']).doNothing())
           .execute();
-        return;
-      }
-
-      if (ROLE_RANK[invite.role] > ROLE_RANK[existing.role]) {
+      } else if (ROLE_RANK[invite.role] > ROLE_RANK[existing.role]) {
         await trx
           .updateTable('board_members')
           .set({ role: invite.role })
@@ -109,9 +107,9 @@ export class InvitesService {
           .where('user_id', '=', userId)
           .execute();
       }
-    });
 
-    return { boardId: invite.board_id };
+      return { boardId: invite.board_id };
+    });
   }
 
   async revoke(boardId: string, inviteId: string): Promise<void> {

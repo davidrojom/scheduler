@@ -6,25 +6,26 @@ collaboration (live board edits and presence cursors). The database is **snake_c
 REST and WebSocket JSON payloads are **camelCase**; the mapping happens at the API/DTO boundary. Kysely runs
 **without** `CamelCasePlugin` (the `DB` type definitions are hand-written in snake_case).
 
-The backend is an independent npm project. The Angular frontend lives at the repository root (port `4200`)
-and is unaffected by anonymous, logged-out usage; the DB-backed path is additive and used only when a user
-is authenticated.
+This is the `@scheduler/backend` package of the pnpm monorepo (it lives in `apps/backend`). The Angular
+frontend is `@scheduler/frontend` in `apps/frontend` (port `4200`) and is unaffected by anonymous,
+logged-out usage; the DB-backed path is additive and used only when a user is authenticated.
 
 ## Requirements
 
-- Node.js 18+
+- Node.js 22+ and pnpm 10+
 - PostgreSQL (no Docker), with two databases:
   - `scheduler` for development
   - `scheduler_test` for the e2e test suite
 
 ## Setup
 
-Install dependencies:
+Install dependencies once from the **repo root** (single workspace lockfile):
 
 ```bash
-cd backend
-npm install
+pnpm install
 ```
+
+All commands below can be run from the repo root with `pnpm --filter @scheduler/backend <script>`.
 
 Copy the example environment file and adjust values as needed:
 
@@ -62,11 +63,11 @@ createdb scheduler
 createdb scheduler_test
 ```
 
-Run the Kysely migrations (the migrate script loads `backend/.env`, runs with `tsx`, and ensures the
+Run the Kysely migrations (the migrate script loads `apps/backend/.env`, runs with `tsx`, and ensures the
 `pgcrypto` extension exists for `gen_random_uuid()`):
 
 ```bash
-npm run migrate
+pnpm --filter @scheduler/backend migrate
 ```
 
 ### Schema overview
@@ -91,7 +92,7 @@ cascade on delete. Columns are snake_case.
 Development (watch mode):
 
 ```bash
-PORT=3100 npm run start:dev
+pnpm --filter @scheduler/backend start:dev
 ```
 
 Health check:
@@ -103,8 +104,8 @@ curl -sf http://localhost:3100/api/health   # -> { "status": "ok" }
 Production build and start:
 
 ```bash
-npm run build
-npm run start:prod
+pnpm --filter @scheduler/backend build
+pnpm --filter @scheduler/backend start:prod
 ```
 
 ## Modules overview
@@ -221,15 +222,15 @@ invite never downgrades an existing higher role, and the owner is never altered 
 ## Testing
 
 ```bash
-npm test                 # Jest unit tests
-npm run test:e2e         # Supertest e2e tests against the scheduler_test database
+pnpm --filter @scheduler/backend test          # Jest unit tests
+pnpm --filter @scheduler/backend test:e2e      # Supertest e2e tests against the scheduler_test database
 ```
 
 Use `--runInBand` to run tests serially (recommended for the DB-backed e2e suite):
 
 ```bash
-npm test -- --runInBand
-npm run test:e2e -- --runInBand
+pnpm --filter @scheduler/backend test -- --runInBand
+pnpm --filter @scheduler/backend test:e2e -- --runInBand
 ```
 
 Migrations must be applied to `scheduler_test` before running the e2e suite.

@@ -5,6 +5,8 @@
     {
       "type": "npm",
       "script": "start",
+      "path": "apps/frontend",
+      "label": "npm: start - apps/frontend",
       "isBackground": true,
       "problemMatcher": {
         "owner": "typescript",
@@ -23,6 +25,8 @@
     {
       "type": "npm",
       "script": "test",
+      "path": "apps/frontend",
+      "label": "npm: test - apps/frontend",
       "isBackground": true,
       "problemMatcher": {
         "owner": "typescript",
@@ -37,6 +41,14 @@
           }
         }
       }
+    },
+    {
+      "type": "npm",
+      "script": "start:dev",
+      "path": "apps/backend",
+      "label": "npm: start:dev - apps/backend",
+      "isBackground": true,
+      "problemMatcher": []
     }
   ]
 }

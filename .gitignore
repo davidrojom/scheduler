@@ -1,15 +1,37 @@
 # See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+# Consolidated for the pnpm monorepo — patterns without a leading "/" match at any depth (root, apps/frontend, apps/backend).
 
-# Compiled output
-/dist
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output (Angular + Nest)
+dist/
+build/
 /tmp
-/out-tsc
+out-tsc/
 /bazel-out
+*.tsbuildinfo
 
-# Node
-/node_modules
+# Angular cache (any depth — pattern without an internal slash matches in apps/frontend too)
+.angular/
+
+# Tests & coverage
+coverage/
+.nyc_output/
+testem.log
+/libpeerconnection.log
+
+# Logs
+logs/
+*.log
 npm-debug.log
 yarn-error.log
+
+# Environment (never commit secrets) — keep examples
+.env
+.env.*
+!.env.example
 
 # IDEs and editors
 .idea/
@@ -19,6 +41,7 @@ yarn-error.log
 *.launch
 .settings/
 *.sublime-workspace
+.history/*
 
 # Visual Studio Code
 .vscode/*
@@ -26,15 +49,10 @@ yarn-error.log
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-.history/*
 
 # Miscellaneous
-/.angular/cache
 .sass-cache/
 /connect.lock
-/coverage
-/libpeerconnection.log
-testem.log
 /typings
 
 # System files

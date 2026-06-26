@@ -1,5 +1,5 @@
 {
-  "name": "scheduler-backend",
+  "name": "@scheduler/backend",
   "version": "0.0.1",
   "description": "NestJS backend for the collaborative scheduler",
   "author": "",

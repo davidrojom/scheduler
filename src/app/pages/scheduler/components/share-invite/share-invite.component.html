@@ -1,0 +1,83 @@
+<ng-container *ngIf="canShare$ | async">
+  <button
+    type="button"
+    (click)="open(shareModal)"
+    class="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 transition-all cursor-pointer shadow-sm text-white font-medium"
+    title="Share / Invite"
+    aria-label="Share / Invite"
+    data-umami-event="open-share-invite"
+  >
+    <i class="ph ph-user-plus text-xl"></i>
+    <span class="hidden md:block">Invite</span>
+  </button>
+</ng-container>
+
+<ng-template #shareModal let-modal>
+  <div class="modal-header">
+    <h4 class="modal-title" id="share-invite-modal">Share / Invite</h4>
+    <button
+      type="button"
+      class="btn-close"
+      aria-label="Close"
+      (click)="modal.dismiss()"
+    ></button>
+  </div>
+  <div class="modal-body flex flex-col gap-3">
+    <label class="flex flex-col gap-1" for="invite-role-select">
+      <span class="font-medium">Role</span>
+      <select
+        id="invite-role-select"
+        class="border rounded-md px-2 py-1"
+        [(ngModel)]="role"
+        aria-label="Invite role"
+        data-umami-event="select-invite-role"
+      >
+        <option *ngFor="let option of roles" [value]="option">
+          {{ option | titlecase }}
+        </option>
+      </select>
+    </label>
+
+    <button
+      type="button"
+      class="flex flex-row items-center justify-center gap-2 text-white bg-blue-600 rounded-md px-4 py-2 disabled:opacity-60"
+      [disabled]="generating"
+      (click)="generate()"
+      data-umami-event="generate-invite-link"
+    >
+      <i class="ph ph-link text-xl"></i>
+      <span>{{ generating ? 'Generating...' : 'Generate link' }}</span>
+    </button>
+
+    <div *ngIf="inviteUrl as url" class="flex flex-col gap-2">
+      <input
+        type="text"
+        class="border rounded-md px-2 py-1 w-full"
+        [value]="url"
+        readonly
+        aria-label="Invite link"
+        data-invite-url
+      />
+      <button
+        type="button"
+        class="flex flex-row items-center justify-center gap-2 text-white bg-green-600 rounded-md px-4 py-2"
+        (click)="copy()"
+        data-umami-event="copy-invite-link"
+      >
+        <i class="ph ph-copy-simple text-xl"></i>
+        <span>{{ copied ? 'Copied!' : 'Copy link' }}</span>
+      </button>
+    </div>
+
+    <p *ngIf="errorMessage" class="text-red-600 text-sm">{{ errorMessage }}</p>
+  </div>
+  <div class="modal-footer">
+    <button
+      type="button"
+      class="btn btn-outline-secondary"
+      (click)="modal.dismiss()"
+    >
+      Close
+    </button>
+  </div>
+</ng-template>

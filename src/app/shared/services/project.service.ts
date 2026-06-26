@@ -15,6 +15,7 @@ import { User } from '../models/user.model';
 import { PersistenceFacade } from '../persistence/persistence-facade.service';
 import { ProjectUpdate } from '../persistence/board-persistence';
 import { BoardMigrationService } from '../persistence/board-migration.service';
+import { BoardSyncScope } from '../collaboration/collab-content.reducer';
 import { AuthService } from './auth.service';
 
 @Injectable({
@@ -56,6 +57,15 @@ export class ProjectService {
     return this.currentProject?.myRole !== 'viewer';
   }
 
+  /**
+   * Streams the rehydrate scopes emitted when the active board's content was
+   * replaced by a remote collaborator op or a reconnect re-sync. The scheduler
+   * page subscribes to re-read columns/tasks/participants reactively.
+   */
+  get boardContentSync$(): Observable<BoardSyncScope[]> {
+    return this.persistence.contentSync$;
+  }
+
   constructor(
     private readonly persistence: PersistenceFacade,
     private readonly authService: AuthService,
@@ -75,6 +85,18 @@ export class ProjectService {
         takeUntilDestroyed()
       )
       .subscribe(() => this.reloadFromPersistence());
+
+    // A remote board:update (rename/config) replaces the active project in the
+    // persistence layer; re-emit so the switcher label and board config follow
+    // live without a reload.
+    this.persistence.contentSync$
+      .pipe(takeUntilDestroyed())
+      .subscribe((scopes) => {
+        if (scopes.includes('project')) {
+          this._projects$.next(this.persistence.getProjects());
+          this._currentProject$.next(this.persistence.getCurrentProject());
+        }
+      });
   }
 
   private migrateOnLogin$(): Observable<void> {

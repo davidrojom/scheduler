@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, DestroyRef, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { ModalHeaderComponent } from '../../../../../shared/ui/components/modals/modal-header/modal-header.component';
 import { SharedModule } from '../../../../../shared/shared.module';
@@ -6,7 +7,7 @@ import { TasksService } from '../../../../../shared/services/tasks.service';
 import { ParticipantsService } from '../../../../../shared/services/participants.service';
 import { ColumnsService } from '../../../../../shared/services/columns.service';
 import { ProjectService } from '../../../../../shared/services/project.service';
-import { take } from 'rxjs';
+import { combineLatest, take } from 'rxjs';
 import {
   ParticipantItemComponent,
   ParticipantStats,
@@ -39,84 +40,82 @@ export class ParticipantStatsModalComponent implements OnInit {
     private tasksService: TasksService,
     private participantsService: ParticipantsService,
     private columnsService: ColumnsService,
-    private projectService: ProjectService
+    private projectService: ProjectService,
+    private destroyRef: DestroyRef
   ) {}
 
   ngOnInit(): void {
-    this.calculateParticipantStats();
-  }
+    combineLatest([
+      this.participantsService.participants$,
+      this.tasksService.tasks$,
+    ])
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(([participants, tasks]) => {
+        const columns = this.columnsService.columns;
+        const participantMap = new Map<
+          string,
+          { totalMinutes: number; tasks: Task[] }
+        >();
 
-  private calculateParticipantStats(): void {
-    this.tasksService.tasks$.pipe(take(1)).subscribe((tasks) => {
-      const columns = this.columnsService.columns;
-      const participantMap = new Map<
-        string,
-        { totalMinutes: number; tasks: Task[] }
-      >();
+        const expandedStates = new Map<string, boolean>();
+        this.participantStats.forEach((stat) => {
+          expandedStates.set(stat.name, stat.isExpanded);
+        });
 
-      const expandedStates = new Map<string, boolean>();
-      this.participantStats.forEach((stat) => {
-        expandedStates.set(stat.name, stat.isExpanded);
-      });
+        participants.forEach((participant) => {
+          participantMap.set(participant.name, {
+            totalMinutes: 0,
+            tasks: [],
+          });
+        });
 
-      this.participantsService.participants$
-        .pipe(take(1))
-        .subscribe((participants) => {
-          participants.forEach((participant) => {
-            participantMap.set(participant.name, {
-              totalMinutes: 0,
-              tasks: [],
+        tasks.forEach((task) => {
+          const durationMs = task.end.getTime() - task.start.getTime();
+          const durationMinutes = Math.round(durationMs / (1000 * 60));
+          const column = columns.find((col) => col.id === task.columnId);
+
+          task.participants.forEach((participant) => {
+            if (!participantMap.has(participant)) {
+              participantMap.set(participant, { totalMinutes: 0, tasks: [] });
+            }
+
+            const participantData = participantMap.get(participant)!;
+            participantData.totalMinutes += durationMinutes;
+            participantData.tasks.push({
+              id: task.id,
+              columnId: task.columnId,
+              title: task.title,
+              start: task.start,
+              end: task.end,
+              columnTitle: column?.title || 'Unknown',
+              durationMinutes: durationMinutes,
             });
           });
         });
 
-      tasks.forEach((task) => {
-        const durationMs = task.end.getTime() - task.start.getTime();
-        const durationMinutes = Math.round(durationMs / (1000 * 60));
-        const column = columns.find((col) => col.id === task.columnId);
+        this.participantStats = Array.from(participantMap.entries())
+          .map(([name, data]) => ({
+            name,
+            totalMinutes: data.totalMinutes,
+            tasks: data.tasks.sort(
+              (a, b) => a.start.getTime() - b.start.getTime()
+            ),
+            isExpanded: expandedStates.get(name) || false,
+          }))
+          .sort((a, b) => b.totalMinutes - a.totalMinutes);
 
-        task.participants.forEach((participant) => {
-          if (!participantMap.has(participant)) {
-            participantMap.set(participant, { totalMinutes: 0, tasks: [] });
-          }
-
-          const participantData = participantMap.get(participant)!;
-          participantData.totalMinutes += durationMinutes;
-          participantData.tasks.push({
-            id: task.id,
-            columnId: task.columnId,
-            title: task.title,
-            start: task.start,
-            end: task.end,
-            columnTitle: column?.title || 'Unknown',
-            durationMinutes: durationMinutes,
-          });
-        });
+        if (this.scrollToParticipant) {
+          setTimeout(() => {
+            const element = document.getElementById(
+              `participant-${this.scrollToParticipant}`
+            );
+            if (element) {
+              element.scrollIntoView({ behavior: 'instant', block: 'nearest' });
+            }
+            this.scrollToParticipant = null;
+          }, 0);
+        }
       });
-
-      this.participantStats = Array.from(participantMap.entries())
-        .map(([name, data]) => ({
-          name,
-          totalMinutes: data.totalMinutes,
-          tasks: data.tasks.sort(
-            (a, b) => a.start.getTime() - b.start.getTime()
-          ),
-          isExpanded: expandedStates.get(name) || false,
-        }))
-        .sort((a, b) => b.totalMinutes - a.totalMinutes);
-
-      if (this.scrollToParticipant) {
-        setTimeout(() => {
-          const element = document.getElementById(
-            `participant-${this.scrollToParticipant}`
-          );
-          if (element) {
-            element.scrollIntoView({ behavior: 'instant', block: 'nearest' });
-          }
-          this.scrollToParticipant = null;
-        }, 0);
-      }
-    });
   }
 
   deleteParticipant(participantName: string): void {
@@ -144,8 +143,6 @@ export class ParticipantStatsModalComponent implements OnInit {
           }
         });
       });
-
-      this.calculateParticipantStats();
     }
   }
 
@@ -171,7 +168,6 @@ export class ParticipantStatsModalComponent implements OnInit {
         ),
       };
       this.tasksService.updateTask(updatedTask);
-      this.calculateParticipantStats();
     });
   }
 
@@ -196,7 +192,6 @@ export class ParticipantStatsModalComponent implements OnInit {
 
     this.participantsService.addParticipant(trimmedName);
     this.newParticipantName = '';
-    this.calculateParticipantStats();
   }
 
   close(): void {

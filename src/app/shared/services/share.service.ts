@@ -15,6 +15,4 @@ export class ShareService {
 
     return storedConfigBase64;
   }
-
-  import(hash: string): void {}
 }

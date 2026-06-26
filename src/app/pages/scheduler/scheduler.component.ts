@@ -164,7 +164,7 @@ export class SchedulerComponent implements OnInit {
       return;
     }
 
-    (window as any).umami?.track('column-reorder');
+    window.umami?.track('column-reorder');
 
     moveItemInArray(
       this.form.controls.columns.controls,
@@ -279,7 +279,7 @@ export class SchedulerComponent implements OnInit {
     }
   }
 
-  open(content: TemplateRef<any>) {
+  open(content: TemplateRef<unknown>) {
     this.modal.open(content, { ariaLabelledBy: 'confirmation' });
   }
 

@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { ConfigService } from './config.service';
 import { BehaviorSubject } from 'rxjs';
-import { v4 } from 'uuid';
 
 export interface Participant {
   name: string;

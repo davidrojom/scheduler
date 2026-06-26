@@ -74,11 +74,12 @@ interface Task {
   imports: [SharedModule],
 })
 export class ScheduleComponent implements OnInit, AfterViewInit {
-  @ViewChild('modalContent', { static: true }) modalContent!: TemplateRef<any>;
+  @ViewChild('modalContent', { static: true })
+  modalContent!: TemplateRef<unknown>;
 
-  hourSegments: number = 6;
-  dayStartHour: number = 6;
-  dayEndHour: number = 21;
+  hourSegments = 6;
+  dayStartHour = 6;
+  dayEndHour = 21;
 
   columnId = input.required<string>();
 
@@ -94,9 +95,9 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
 
   tasks: (CalendarEvent & Task)[] = [];
 
-  activeDayIsOpen: boolean = true;
+  activeDayIsOpen = true;
 
-  private longPressTimer: any;
+  private longPressTimer: ReturnType<typeof setTimeout> | null = null;
   private touchStartX = 0;
   private touchStartY = 0;
   private touchStartTime = 0;
@@ -307,7 +308,6 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
   }
 
   private onTouchEnd(event: TouchEvent): void {
-    const timerExists = !!this.longPressTimer;
     const touchDuration = Date.now() - this.touchStartTime;
 
     if (this.longPressTimer && !this.isDragEnabled) {
@@ -367,7 +367,7 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
     this.isScrolling = false;
   }
 
-  private onTouchCancel(event: TouchEvent): void {
+  private onTouchCancel(): void {
     this.cleanupTouchState();
   }
 
@@ -506,7 +506,7 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
       return;
     }
 
-    (window as any).umami?.track('task-drag-resize');
+    window.umami?.track('task-drag-resize');
 
     const updatedTasks: Task[] = this.tasks.map((iEvent) => {
       if (iEvent.id === event.id) {
@@ -567,7 +567,7 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
       }
 
       // Track opening new task modal
-      (window as any).umami?.track('open-new-task-modal');
+      window.umami?.track('open-new-task-modal');
 
       const modalRef = this.modal.open(TaskModalComponent, {
         size: 'lg',
@@ -587,7 +587,7 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
       };
     } else if (action === 'task') {
       // Track opening edit task modal
-      (window as any).umami?.track('open-edit-task-modal');
+      window.umami?.track('open-edit-task-modal');
 
       const modalRef = this.modal.open(TaskModalComponent, {
         size: 'lg',

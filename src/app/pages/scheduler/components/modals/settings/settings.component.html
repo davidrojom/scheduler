@@ -29,10 +29,11 @@
       </div>
 
       <div class="mb-4">
-        <label class="form-label fw-bold">Logo (Optional)</label>
+        <label for="logoInput" class="form-label fw-bold">Logo (Optional)</label>
         <div class="d-flex flex-column gap-2" *ngIf="!readOnly">
           <input
             type="file"
+            id="logoInput"
             class="form-control"
             accept=".svg,image/svg+xml"
             (change)="onLogoFileSelected($event)"
@@ -46,7 +47,7 @@
 
         @if (hasLogo) {
         <div class="mt-3 p-3 border rounded">
-          <label class="form-label fw-bold">Current Logo</label>
+          <span class="form-label fw-bold">Current Logo</span>
           <div
             class="d-flex justify-content-center align-items-center mb-2"
             style="max-height: 100px"

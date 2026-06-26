@@ -1,0 +1,86 @@
+<div
+  class="flex h-dvh items-center justify-center bg-gray-900 px-4 text-white"
+  [attr.data-join-status]="status"
+>
+  <div
+    class="flex w-full max-w-md flex-col items-center gap-4 rounded-2xl bg-gray-800 p-8 text-center shadow-xl"
+  >
+    <ng-container [ngSwitch]="status">
+      <ng-container *ngSwitchCase="'loading'">
+        <i class="ph ph-circle-notch animate-spin text-4xl"></i>
+        <span class="text-lg">Loading invitation...</span>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'accepting'">
+        <i class="ph ph-circle-notch animate-spin text-4xl"></i>
+        <span class="text-lg">Joining board...</span>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'invalid'">
+        <i class="ph ph-warning-circle text-5xl text-red-400"></i>
+        <h1 class="text-xl font-semibold" data-invalid-invite>
+          Invitation not available
+        </h1>
+        <p class="text-gray-300">
+          This invite link is invalid, has been revoked, or no longer exists.
+          You have not been granted access to any board.
+        </p>
+        <a
+          routerLink="/"
+          class="mt-2 cursor-pointer rounded-lg bg-white px-4 py-2 font-medium text-gray-800 transition-all hover:bg-gray-100"
+        >
+          Go to the scheduler
+        </a>
+      </ng-container>
+
+      <ng-container *ngSwitchDefault>
+        <i class="ph ph-users-three text-5xl text-indigo-300"></i>
+        <h1 class="text-xl font-semibold">You've been invited</h1>
+        <p class="text-gray-300">
+          Join
+          <span class="font-semibold text-white" data-join-board-name>{{
+            boardName
+          }}</span>
+          as
+          <span class="font-semibold capitalize text-white" data-join-role>{{
+            role
+          }}</span
+          >.
+        </p>
+
+        <ng-container *ngIf="status === 'login'; else acceptTpl">
+          <p class="text-sm text-gray-400">
+            Sign in to accept this invitation and open the board.
+          </p>
+          <button
+            type="button"
+            (click)="login()"
+            data-login-button
+            class="flex items-center gap-2 rounded-lg bg-white px-4 py-2 font-medium text-gray-800 shadow-sm transition-all hover:bg-gray-100"
+            data-umami-event="join-sign-in"
+          >
+            <i class="ph ph-google-logo text-xl"></i>
+            <span>Sign in with Google</span>
+          </button>
+        </ng-container>
+
+        <ng-template #acceptTpl>
+          <button
+            type="button"
+            (click)="accept()"
+            data-accept-button
+            class="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 font-medium text-white shadow-sm transition-all hover:bg-indigo-700"
+            data-umami-event="accept-invite"
+          >
+            <i class="ph ph-check text-xl"></i>
+            <span>Accept invitation</span>
+          </button>
+        </ng-template>
+
+        <p *ngIf="errorMessage" class="text-sm text-red-400">
+          {{ errorMessage }}
+        </p>
+      </ng-container>
+    </ng-container>
+  </div>
+</div>

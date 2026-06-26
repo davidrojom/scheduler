@@ -1,0 +1,32 @@
+<ng-content></ng-content>
+
+<div class="sch-cursor-layer" aria-hidden="true">
+  @for (cursor of cursors; track cursor.userId) {
+  <div
+    class="sch-remote-cursor"
+    [style.left.px]="cursor.left"
+    [style.top.px]="cursor.top"
+    [attr.data-user-id]="cursor.userId"
+  >
+    <svg
+      class="sch-remote-cursor__pointer"
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      [attr.fill]="cursor.color"
+    >
+      <path
+        d="M2 2 L2 16 L6 12 L9 18 L11.5 17 L8.5 11 L14 11 Z"
+        stroke="white"
+        stroke-width="1"
+      />
+    </svg>
+    <span
+      class="sch-remote-cursor__label"
+      [style.background-color]="cursor.color"
+    >
+      {{ cursor.name }}
+    </span>
+  </div>
+  }
+</div>

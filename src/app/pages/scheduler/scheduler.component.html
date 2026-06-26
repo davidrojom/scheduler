@@ -28,6 +28,8 @@
     </div>
 
     <div class="flex items-center gap-3">
+      <sch-presence-indicator></sch-presence-indicator>
+
       <sch-project-switcher></sch-project-switcher>
 
       <sch-share-invite></sch-share-invite>
@@ -109,6 +111,10 @@
   </div>
   }
   <div class="mx-3 overflow-x-auto h-full">
+    <sch-cursor-overlay
+      [boardId]="currentBoardId$ | async"
+      [canvas]="scheduleForm"
+    >
     <div
       cdkDropList
       cdkDropListOrientation="horizontal"
@@ -116,7 +122,12 @@
       #dropList="cdkDropList"
       class="touch-pan-x"
     >
-      <form id="schedule" [formGroup]="form" class="flex flex-row gap-4 w-fit">
+      <form
+        #scheduleForm
+        id="schedule"
+        [formGroup]="form"
+        class="flex flex-row gap-4 w-fit"
+      >
         @for (column of form.controls.columns.controls; track
         column.controls.id; let i = $index) {
         <div
@@ -201,6 +212,7 @@
         }
       </form>
     </div>
+    </sch-cursor-overlay>
   </div>
 </main>
 

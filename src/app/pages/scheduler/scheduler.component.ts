@@ -42,6 +42,8 @@ import { SettingsComponent } from './components/modals/settings/settings.compone
 import { ProjectSwitcherComponent } from './components/project-switcher/project-switcher.component';
 import { ShareInviteComponent } from './components/share-invite/share-invite.component';
 import { AuthMenuComponent } from '../../shared/ui/components/auth-menu/auth-menu.component';
+import { PresenceIndicatorComponent } from './components/presence-indicator/presence-indicator.component';
+import { CursorOverlayComponent } from './components/cursor-overlay/cursor-overlay.component';
 
 @Component({
   selector: 'sch-scheduler',
@@ -61,6 +63,8 @@ import { AuthMenuComponent } from '../../shared/ui/components/auth-menu/auth-men
     ProjectSwitcherComponent,
     ShareInviteComponent,
     AuthMenuComponent,
+    PresenceIndicatorComponent,
+    CursorOverlayComponent,
   ],
 })
 export class SchedulerComponent implements OnInit {
@@ -81,6 +85,7 @@ export class SchedulerComponent implements OnInit {
   exportHash = '';
   mobileMenuOpen = false;
   canEdit$!: Observable<boolean>;
+  currentBoardId$!: Observable<string | null>;
 
   get isMobile(): boolean {
     return this.mobileDetectionService.isMobile;
@@ -100,6 +105,10 @@ export class SchedulerComponent implements OnInit {
   ) {}
   ngOnInit(): void {
     this.canEdit$ = this.projectService.canEditCurrentBoard$;
+    this.currentBoardId$ = this.projectService.currentProject$.pipe(
+      map((project) => project?.id ?? null),
+      distinctUntilChanged()
+    );
 
     this.columnsService.columns$
       .pipe(takeUntilDestroyed(this.destroyRef))

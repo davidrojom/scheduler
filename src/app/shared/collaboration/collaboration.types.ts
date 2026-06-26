@@ -43,6 +43,32 @@ export type RemoteEvent =
   | { type: 'participant:removed'; boardId: string; name: string }
   | { type: 'board:updated'; boardId: string; board: RemoteBoard };
 
+/**
+ * A collaborator currently present in the board room. `color` is assigned
+ * server-side as a deterministic function of the user id (architecture §5.1),
+ * so it is identical across the presence list and that user's cursor and is
+ * stable across reconnects.
+ */
+export interface PresenceMember {
+  userId: string;
+  name: string;
+  color: string;
+}
+
+/**
+ * A remote collaborator's last-known cursor position. `x`/`y` are normalized
+ * (0..1) relative to the board canvas so they map correctly between viewports.
+ * `updatedAt` (epoch ms) drives the client-side idle removal.
+ */
+export interface RemoteCursor {
+  userId: string;
+  name: string;
+  color: string;
+  x: number;
+  y: number;
+  updatedAt: number;
+}
+
 export const REMOTE_EVENT_NAMES: RemoteEvent['type'][] = [
   'column:created',
   'column:updated',

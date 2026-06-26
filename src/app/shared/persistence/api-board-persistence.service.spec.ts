@@ -4,9 +4,20 @@ import {
   HttpTestingController,
 } from '@angular/common/http/testing';
 
+import { EMPTY } from 'rxjs';
+
 import { ApiBoardPersistence } from './api-board-persistence.service';
 import { environment } from '../../../environments/environment';
 import { Task } from '../../pages/scheduler/components/modals/task/task-modal.component';
+import { CollaborationService } from '../collaboration/collaboration.service';
+
+const collabStub: Partial<CollaborationService> = {
+  remoteEvents$: EMPTY,
+  resync$: EMPTY,
+  isLive: () => false,
+  emitOp: () => false,
+  setActiveBoard: () => undefined,
+};
 
 const ISO = '2024-01-01T00:00:00.000Z';
 
@@ -69,6 +80,7 @@ describe('ApiBoardPersistence', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
+      providers: [{ provide: CollaborationService, useValue: collabStub }],
     });
     service = TestBed.inject(ApiBoardPersistence);
     httpMock = TestBed.inject(HttpTestingController);

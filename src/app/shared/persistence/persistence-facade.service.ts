@@ -13,6 +13,7 @@ import { ApiBoardPersistence } from './api-board-persistence.service';
 import { AuthService } from '../services/auth.service';
 import { Project, ProjectConfig } from '../models/project.model';
 import { Task } from '../../pages/scheduler/components/modals/task/task-modal.component';
+import { BoardSyncScope } from '../collaboration/collab-content.reducer';
 
 @Injectable({
   providedIn: 'root',
@@ -26,6 +27,15 @@ export class PersistenceFacade implements BoardPersistence {
 
   get active(): BoardPersistence {
     return this.authService.isAuthenticated ? this.api : this.local;
+  }
+
+  /**
+   * Rehydrate signals from the realtime/REST strategy (remote ops, reconnect
+   * re-sync). Anonymous localStorage never emits, so this is always the API
+   * strategy's stream regardless of the current active strategy.
+   */
+  get contentSync$(): Observable<BoardSyncScope[]> {
+    return this.api.contentSync$;
   }
 
   loadProjects(): Project[] {

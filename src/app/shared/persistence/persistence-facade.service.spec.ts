@@ -4,10 +4,13 @@ import {
   HttpTestingController,
 } from '@angular/common/http/testing';
 
+import { EMPTY } from 'rxjs';
+
 import { PersistenceFacade } from './persistence-facade.service';
 import { LocalBoardPersistence } from './local-board-persistence.service';
 import { ApiBoardPersistence } from './api-board-persistence.service';
 import { AuthService } from '../services/auth.service';
+import { CollaborationService } from '../collaboration/collaboration.service';
 import { environment } from '../../../environments/environment';
 
 class FakeAuthService {
@@ -17,6 +20,14 @@ class FakeAuthService {
     return this.authenticated;
   }
 }
+
+const collabStub: Partial<CollaborationService> = {
+  remoteEvents$: EMPTY,
+  resync$: EMPTY,
+  isLive: () => false,
+  emitOp: () => false,
+  setActiveBoard: () => undefined,
+};
 
 describe('PersistenceFacade', () => {
   let facade: PersistenceFacade;
@@ -31,7 +42,10 @@ describe('PersistenceFacade', () => {
 
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      providers: [{ provide: AuthService, useValue: auth }],
+      providers: [
+        { provide: AuthService, useValue: auth },
+        { provide: CollaborationService, useValue: collabStub },
+      ],
     });
 
     facade = TestBed.inject(PersistenceFacade);

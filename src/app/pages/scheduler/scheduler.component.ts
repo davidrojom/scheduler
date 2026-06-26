@@ -1,5 +1,6 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   DestroyRef,
   HostListener,
@@ -94,7 +95,8 @@ export class SchedulerComponent implements OnInit {
     private readonly destroyRef: DestroyRef,
     private readonly modal: NgbModal,
     private readonly mobileDetectionService: MobileDetectionService,
-    private readonly projectService: ProjectService
+    private readonly projectService: ProjectService,
+    private readonly changeDetector: ChangeDetectorRef
   ) {}
   ngOnInit(): void {
     this.canEdit$ = this.projectService.canEditCurrentBoard$;
@@ -113,6 +115,27 @@ export class SchedulerComponent implements OnInit {
       )
       .subscribe(() => {
         this.reloadBoard();
+      });
+
+    // Remote collaborator ops / reconnect re-sync replace the active board's
+    // content in the persistence layer; re-read only the affected streams so
+    // live edits appear without a reload (and without disrupting unaffected
+    // in-progress editing).
+    this.projectService.boardContentSync$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((scopes) => {
+        if (scopes.includes('columns')) {
+          this.columnsService.setColumns();
+        }
+        if (scopes.includes('tasks')) {
+          this.tasksService.setTasks();
+        }
+        if (scopes.includes('participants')) {
+          this.participantsService.setParticipants();
+        }
+        // A remote op has no originating DOM event, so this OnPush component
+        // must be marked dirty explicitly for the rehydrated state to paint.
+        this.changeDetector.markForCheck();
       });
 
     this.form.controls.columns.valueChanges

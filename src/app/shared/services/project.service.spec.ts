@@ -3,14 +3,23 @@ import {
   HttpClientTestingModule,
   HttpTestingController,
 } from '@angular/common/http/testing';
-import { BehaviorSubject, Observable, distinctUntilChanged } from 'rxjs';
+import { BehaviorSubject, EMPTY, Observable, distinctUntilChanged } from 'rxjs';
 
 import { ProjectService } from './project.service';
 import { AuthService } from './auth.service';
 import { LocalBoardPersistence } from '../persistence/local-board-persistence.service';
+import { CollaborationService } from '../collaboration/collaboration.service';
 import { Project } from '../models/project.model';
 import { User } from '../models/user.model';
 import { environment } from '../../../environments/environment';
+
+const collabStub: Partial<CollaborationService> = {
+  remoteEvents$: EMPTY,
+  resync$: EMPTY,
+  isLive: () => false,
+  emitOp: () => false,
+  setActiveBoard: () => undefined,
+};
 
 const ISO = '2024-01-01T00:00:00.000Z';
 const TEST_USER: User = {
@@ -76,7 +85,10 @@ describe('ProjectService (DB boards)', () => {
 
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      providers: [{ provide: AuthService, useValue: auth }],
+      providers: [
+        { provide: AuthService, useValue: auth },
+        { provide: CollaborationService, useValue: collabStub },
+      ],
     });
   });
 

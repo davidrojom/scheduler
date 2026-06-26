@@ -1,6 +1,7 @@
 import {
   Component,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   ViewChild,
   TemplateRef,
   input,
@@ -117,7 +118,8 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
     private readonly destroyRef: DestroyRef,
     private readonly mobileDetectionService: MobileDetectionService,
     private readonly elementRef: ElementRef,
-    private readonly projectService: ProjectService
+    private readonly projectService: ProjectService,
+    private readonly changeDetector: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -156,6 +158,9 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
         });
 
         this.refresh.next();
+        // Remote task ops update this stream without an originating DOM event;
+        // mark this OnPush view dirty so the calendar's [events] input repaints.
+        this.changeDetector.markForCheck();
       });
   }
 

@@ -136,7 +136,7 @@ export class CollaborationGateway
     @MessageBody() payload: JoinPayload,
   ): Promise<void> {
     const boardId = payload?.boardId;
-    if (!boardId) {
+    if (!boardId || !client.data.boards.has(boardId)) {
       return;
     }
     const room = boardRoom(boardId);

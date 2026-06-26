@@ -8,6 +8,7 @@ import {
   of,
   switchMap,
   take,
+  tap,
 } from 'rxjs';
 import { Project, ProjectConfig } from '../models/project.model';
 import { User } from '../models/user.model';
@@ -122,6 +123,22 @@ export class ProjectService {
         this._currentProject$.next(this.persistence.getCurrentProject());
       },
     });
+  }
+
+  /**
+   * Refreshes the board list (so a board the user just gained access to via an
+   * accepted invite appears in the switcher) and opens it, re-emitting both the
+   * switcher list and the current board so the reactive scheduler rehydrates.
+   */
+  openBoard(id: string): Observable<void> {
+    return this.persistence.refreshBoards().pipe(
+      tap((projects) => this._projects$.next(projects)),
+      switchMap(() => this.persistence.switchProject(id)),
+      tap(() =>
+        this._currentProject$.next(this.persistence.getCurrentProject())
+      ),
+      map(() => undefined)
+    );
   }
 
   getProjectConfig(projectId?: string): ProjectConfig {

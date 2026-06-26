@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { AuthService } from '../../shared/services/auth.service';
+import { InvitesService } from '../../shared/services/invites.service';
 
 @Component({
   selector: 'sch-auth-callback',
@@ -20,6 +21,7 @@ export class AuthCallbackComponent implements OnInit {
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly authService: AuthService,
+    private readonly invitesService: InvitesService,
   ) {}
 
   ngOnInit(): void {
@@ -30,7 +32,14 @@ export class AuthCallbackComponent implements OnInit {
       return;
     }
 
-    this.authService.handleCallbackToken(token).subscribe(() => {
+    this.authService.handleCallbackToken(token).subscribe((user) => {
+      const pendingInvite = this.invitesService.getPendingInvite();
+
+      if (user && pendingInvite) {
+        void this.router.navigate(['/join', pendingInvite]);
+        return;
+      }
+
       void this.router.navigate(['/']);
     });
   }

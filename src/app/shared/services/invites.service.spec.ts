@@ -5,7 +5,12 @@ import {
 } from '@angular/common/http/testing';
 import { firstValueFrom } from 'rxjs';
 
-import { InvitesService, InviteLink } from './invites.service';
+import {
+  InvitesService,
+  InviteLink,
+  InviteInfo,
+  PENDING_INVITE_KEY,
+} from './invites.service';
 import { environment } from '../../../environments/environment';
 
 describe('InvitesService', () => {
@@ -24,6 +29,7 @@ describe('InvitesService', () => {
 
   afterEach(() => {
     httpMock.verify();
+    localStorage.removeItem(PENDING_INVITE_KEY);
   });
 
   it('POSTs the chosen role to /api/boards/:id/invites and returns the link', async () => {
@@ -59,5 +65,61 @@ describe('InvitesService', () => {
     req.flush(response);
 
     await expectAsync(result).toBeResolvedTo(response);
+  });
+
+  it('GETs invite info from /api/invites/:token', async () => {
+    const info: InviteInfo = {
+      boardId: 'board-1',
+      boardName: 'Contract Board',
+      role: 'viewer',
+      valid: true,
+    };
+
+    const result = firstValueFrom(service.getInvite('tok123'));
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/invites/tok123`);
+    expect(req.request.method).toBe('GET');
+    req.flush(info);
+
+    await expectAsync(result).toBeResolvedTo(info);
+  });
+
+  it('reports an invalid invite for a nonexistent token', async () => {
+    const info: InviteInfo = {
+      boardId: null,
+      boardName: null,
+      role: null,
+      valid: false,
+    };
+
+    const result = firstValueFrom(service.getInvite('missing'));
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/invites/missing`);
+    req.flush(info);
+
+    await expectAsync(result).toBeResolvedTo(info);
+  });
+
+  it('POSTs to /api/invites/:token/accept and returns the boardId', async () => {
+    const result = firstValueFrom(service.acceptInvite('tok123'));
+
+    const req = httpMock.expectOne(
+      `${environment.apiBaseUrl}/invites/tok123/accept`
+    );
+    expect(req.request.method).toBe('POST');
+    req.flush({ boardId: 'board-1' });
+
+    await expectAsync(result).toBeResolvedTo({ boardId: 'board-1' });
+  });
+
+  it('stores, reads, and clears a pending invite token', () => {
+    expect(service.getPendingInvite()).toBeNull();
+
+    service.setPendingInvite('tok123');
+    expect(localStorage.getItem(PENDING_INVITE_KEY)).toBe('tok123');
+    expect(service.getPendingInvite()).toBe('tok123');
+
+    service.clearPendingInvite();
+    expect(service.getPendingInvite()).toBeNull();
   });
 });

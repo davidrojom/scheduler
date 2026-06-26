@@ -179,6 +179,54 @@ describe('ProjectService (DB boards)', () => {
     httpMock.expectNone(() => true);
   });
 
+  it('openBoard refreshes the list and opens a newly accessible board', () => {
+    const service = createService();
+
+    localStorage.setItem(`scheduler_migrated_${TEST_USER.id}`, 'true');
+    auth.setAuthenticated(true);
+    httpMock
+      .expectOne(boardsUrl)
+      .flush([
+        { id: 'b1', name: 'Mine', myRole: 'owner', config: {}, updatedAt: ISO },
+      ]);
+    httpMock.expectOne(`${boardsUrl}/b1`).flush(detailDto('b1', 'Mine'));
+
+    let projects: Project[] = [];
+    let current: Project | null = null;
+    service.projects$.subscribe((p) => (projects = p));
+    service.currentProject$.subscribe((p) => (current = p));
+
+    let done = false;
+    service.openBoard('shared-1').subscribe(() => (done = true));
+
+    // openBoard re-lists boards (the accepted board now appears) ...
+    const listReq = httpMock.expectOne(boardsUrl);
+    expect(listReq.request.method).toBe('GET');
+    listReq.flush([
+      { id: 'b1', name: 'Mine', myRole: 'owner', config: {}, updatedAt: ISO },
+      {
+        id: 'shared-1',
+        name: 'Shared Board',
+        myRole: 'viewer',
+        config: {},
+        updatedAt: ISO,
+      },
+    ]);
+
+    // ... then opens it via GET /api/boards/:id.
+    const detailReq = httpMock.expectOne(`${boardsUrl}/shared-1`);
+    expect(detailReq.request.method).toBe('GET');
+    detailReq.flush({
+      ...detailDto('shared-1', 'Shared Board'),
+      myRole: 'viewer',
+    });
+
+    expect(done).toBeTrue();
+    expect(projects.map((p) => p.id)).toContain('shared-1');
+    expect(current!.id).toBe('shared-1');
+    expect(current!.myRole).toBe('viewer');
+  });
+
   it('imports local boards on first login, then loads DB boards (no duplicates on relogin)', () => {
     const service = createService();
     const local = TestBed.inject(LocalBoardPersistence);

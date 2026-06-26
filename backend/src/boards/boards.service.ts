@@ -1,6 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { Transaction } from 'kysely';
+import { RealtimeBroadcaster } from '../collaboration/realtime-broadcaster';
 import { Database, KYSELY } from '../database/database.module';
 import { Board, BoardRole, DB } from '../database/database.types';
 import {
@@ -15,7 +16,10 @@ import { UpdateBoardDto } from './dto/update-board.dto';
 
 @Injectable()
 export class BoardsService {
-  constructor(@Inject(KYSELY) private readonly db: Database) {}
+  constructor(
+    @Inject(KYSELY) private readonly db: Database,
+    @Optional() private readonly realtime?: RealtimeBroadcaster,
+  ) {}
 
   async getMemberRole(
     boardId: string,
@@ -155,7 +159,12 @@ export class BoardsService {
       .returningAll()
       .executeTakeFirstOrThrow();
 
-    return mapBoard(board);
+    const mapped = mapBoard(board);
+    this.realtime?.emitToBoard(boardId, 'board:updated', {
+      boardId,
+      board: mapped,
+    });
+    return mapped;
   }
 
   async remove(boardId: string): Promise<void> {

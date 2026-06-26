@@ -1,5 +1,11 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { sql } from 'kysely';
+import { RealtimeBroadcaster } from '../../collaboration/realtime-broadcaster';
 import { Database, KYSELY } from '../../database/database.module';
 import { Task } from '../../database/database.types';
 import { BoardTaskDto } from '../boards.types';
@@ -8,7 +14,10 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 
 @Injectable()
 export class TasksService {
-  constructor(@Inject(KYSELY) private readonly db: Database) {}
+  constructor(
+    @Inject(KYSELY) private readonly db: Database,
+    @Optional() private readonly realtime?: RealtimeBroadcaster,
+  ) {}
 
   async create(boardId: string, dto: CreateTaskDto): Promise<BoardTaskDto> {
     await this.assertColumnInBoard(boardId, dto.columnId);
@@ -27,7 +36,9 @@ export class TasksService {
       })
       .returningAll()
       .executeTakeFirstOrThrow();
-    return mapTask(row);
+    const task = mapTask(row);
+    this.realtime?.emitToBoard(boardId, 'task:created', { boardId, task });
+    return task;
   }
 
   async update(
@@ -58,7 +69,9 @@ export class TasksService {
     if (!row) {
       throw new NotFoundException('Task not found');
     }
-    return mapTask(row);
+    const task = mapTask(row);
+    this.realtime?.emitToBoard(boardId, 'task:updated', { boardId, task });
+    return task;
   }
 
   async remove(boardId: string, taskId: string): Promise<void> {
@@ -71,6 +84,7 @@ export class TasksService {
     if (!deleted) {
       throw new NotFoundException('Task not found');
     }
+    this.realtime?.emitToBoard(boardId, 'task:deleted', { boardId, taskId });
   }
 
   private async assertColumnInBoard(

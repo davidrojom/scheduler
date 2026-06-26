@@ -15,6 +15,7 @@
         ></i>
       </button>
 
+      @if (canEdit$ | async) {
       <button
         (click)="addColumn()"
         class="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer shadow-sm text-white font-medium"
@@ -23,6 +24,7 @@
         <i class="ph ph-plus text-xl"></i>
         <span class="hidden md:block">Add Column</span>
       </button>
+      }
     </div>
 
     <div class="flex items-center gap-3">
@@ -51,6 +53,7 @@
     <div
       class="fixed top-[76px] bg-gray-800 p-3 flex flex-col gap-2 shadow-lg max-w-md"
     >
+      @if (canEdit$ | async) {
       <button
         (click)="open(wipeConfirmation); closeMobileMenu()"
         class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 transition-all text-white font-medium shadow-sm"
@@ -59,6 +62,7 @@
         <i class="ph ph-trash text-xl"></i>
         <span>Wipe Data</span>
       </button>
+      }
       <button
         (click)="exportAndDownload(); closeMobileMenu()"
         class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-green-600 hover:bg-green-700 transition-all text-white font-medium shadow-sm"
@@ -83,6 +87,7 @@
         <i class="ph ph-share-network text-xl"></i>
         <span>Share</span>
       </button>
+      @if (canEdit$ | async) {
       <button
         (click)="open(importModal); closeMobileMenu()"
         class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition-all text-white font-medium shadow-sm"
@@ -91,6 +96,7 @@
         <i class="ph ph-download-simple text-xl"></i>
         <span>Import</span>
       </button>
+      }
       <button
         (click)="openParticipantStats(); closeMobileMenu()"
         class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 transition-all text-white font-medium shadow-sm"
@@ -117,6 +123,7 @@
           #columnContainer
           class="flex flex-col divide-y w-[500px] min-w-[500px] select-none"
           cdkDrag
+          [cdkDragDisabled]="(canEdit$ | async) === false"
           [cdkDragStartDelay]="{
             touch: 200,
             mouse: 0
@@ -131,6 +138,7 @@
             cdkDragHandle
             [formGroupName]="i"
           >
+            @if (canEdit$ | async) {
             <button
               class="grid place-items-center w-[32px] h-[32px] rounded-full cursor-pointer hover:bg-blue-400 transition-all"
               (click)="open(deleteColumnConfirmation)"
@@ -138,14 +146,17 @@
             >
               <i class="ph ph-trash"></i>
             </button>
+            }
             <input
               type="text"
               formControlName="title"
+              [readonly]="(canEdit$ | async) === false"
               class="p-2 bg-blue-900 text-center border rounded-md w-[400px]"
             />
           </header>
           <sch-schedule
             [columnId]="column.controls.id.value"
+            [readOnly]="(canEdit$ | async) === false"
             (mousedown)="$event.stopPropagation()"
           />
         </div>

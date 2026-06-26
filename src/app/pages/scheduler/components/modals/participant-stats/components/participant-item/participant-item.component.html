@@ -34,6 +34,7 @@
         </div>
       </div>
     </div>
+    @if (!readOnly) {
     <button
       type="button"
       class="delete-button"
@@ -42,6 +43,7 @@
     >
       Delete
     </button>
+    }
   </div>
 
   @if (participant.isExpanded) {
@@ -51,7 +53,11 @@
     } @else {
     <div class="space-y-2 mt-3">
       @for (task of participant.tasks; track task.id) {
-      <sch-task-list-item [task]="task" (remove)="onRemoveFromTask($event)" />
+      <sch-task-list-item
+        [task]="task"
+        [readOnly]="readOnly"
+        (remove)="onRemoveFromTask($event)"
+      />
       }
     </div>
     }

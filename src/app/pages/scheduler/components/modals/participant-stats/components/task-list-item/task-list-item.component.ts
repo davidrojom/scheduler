@@ -20,6 +20,7 @@ export interface Task {
 })
 export class TaskListItemComponent {
   @Input({ required: true }) task!: Task;
+  @Input() readOnly = false;
   @Output() remove = new EventEmitter<string>();
 
   formatTime(date: Date): string {

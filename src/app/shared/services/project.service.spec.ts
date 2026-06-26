@@ -227,6 +227,60 @@ describe('ProjectService (DB boards)', () => {
     expect(current!.myRole).toBe('viewer');
   });
 
+  it('treats anonymous boards as editable (canEdit true, no role)', () => {
+    const service = createService();
+
+    expect(service.isCurrentBoardEditable).toBeTrue();
+
+    let canEdit: boolean | undefined;
+    service.canEditCurrentBoard$.subscribe((v) => (canEdit = v));
+    expect(canEdit).toBeTrue();
+
+    httpMock.expectNone(() => true);
+  });
+
+  it('marks an authenticated viewer board read-only (canEdit false)', () => {
+    const service = createService();
+
+    localStorage.setItem(`scheduler_migrated_${TEST_USER.id}`, 'true');
+    auth.setAuthenticated(true);
+    httpMock
+      .expectOne(boardsUrl)
+      .flush([
+        { id: 'b1', name: 'Shared', myRole: 'viewer', config: {}, updatedAt: ISO },
+      ]);
+    httpMock
+      .expectOne(`${boardsUrl}/b1`)
+      .flush({ ...detailDto('b1', 'Shared'), myRole: 'viewer' });
+
+    expect(service.isCurrentBoardEditable).toBeFalse();
+
+    let canEdit: boolean | undefined;
+    service.canEditCurrentBoard$.subscribe((v) => (canEdit = v));
+    expect(canEdit).toBeFalse();
+  });
+
+  it('keeps owner/editor boards editable (canEdit true)', () => {
+    const service = createService();
+
+    localStorage.setItem(`scheduler_migrated_${TEST_USER.id}`, 'true');
+    auth.setAuthenticated(true);
+    httpMock
+      .expectOne(boardsUrl)
+      .flush([
+        { id: 'b1', name: 'Mine', myRole: 'editor', config: {}, updatedAt: ISO },
+      ]);
+    httpMock
+      .expectOne(`${boardsUrl}/b1`)
+      .flush({ ...detailDto('b1', 'Mine'), myRole: 'editor' });
+
+    expect(service.isCurrentBoardEditable).toBeTrue();
+
+    let canEdit: boolean | undefined;
+    service.canEditCurrentBoard$.subscribe((v) => (canEdit = v));
+    expect(canEdit).toBeTrue();
+  });
+
   it('imports local boards on first login, then loads DB boards (no duplicates on relogin)', () => {
     const service = createService();
     const local = TestBed.inject(LocalBoardPersistence);

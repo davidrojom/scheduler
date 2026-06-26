@@ -5,6 +5,7 @@ import { SharedModule } from '../../../../../shared/shared.module';
 import { TasksService } from '../../../../../shared/services/tasks.service';
 import { ParticipantsService } from '../../../../../shared/services/participants.service';
 import { ColumnsService } from '../../../../../shared/services/columns.service';
+import { ProjectService } from '../../../../../shared/services/project.service';
 import { take } from 'rxjs';
 import {
   ParticipantItemComponent,
@@ -29,11 +30,16 @@ export class ParticipantStatsModalComponent implements OnInit {
     return `Participant Statistics (${count})`;
   }
 
+  get canEdit(): boolean {
+    return this.projectService.isCurrentBoardEditable;
+  }
+
   constructor(
     public activeModal: NgbActiveModal,
     private tasksService: TasksService,
     private participantsService: ParticipantsService,
-    private columnsService: ColumnsService
+    private columnsService: ColumnsService,
+    private projectService: ProjectService
   ) {}
 
   ngOnInit(): void {
@@ -114,6 +120,10 @@ export class ParticipantStatsModalComponent implements OnInit {
   }
 
   deleteParticipant(participantName: string): void {
+    if (!this.canEdit) {
+      return;
+    }
+
     const confirmed = confirm(
       `Are you sure you want to delete "${participantName}"?\n\nThis will remove them from all tasks and cannot be undone.`
     );
@@ -143,6 +153,10 @@ export class ParticipantStatsModalComponent implements OnInit {
     participantName: string;
     taskId: string;
   }): void {
+    if (!this.canEdit) {
+      return;
+    }
+
     this.scrollToParticipant = event.participantName;
     this.tasksService.tasks$.pipe(take(1)).subscribe((tasks) => {
       const task = tasks.find((t) => t.id === event.taskId);
@@ -166,6 +180,10 @@ export class ParticipantStatsModalComponent implements OnInit {
   }
 
   addParticipant(): void {
+    if (!this.canEdit) {
+      return;
+    }
+
     const trimmedName = this.newParticipantName.trim();
     if (!trimmedName) {
       return;

@@ -24,6 +24,7 @@ export class SettingsComponent implements OnInit {
   settingsForm!: FormGroup;
   logoPreview: SafeHtml | null = null;
   logoContent: string | null = null;
+  readOnly = false;
 
   constructor(
     public activeModal: NgbActiveModal,
@@ -63,6 +64,11 @@ export class SettingsComponent implements OnInit {
       this.logoPreview = this.sanitizer.bypassSecurityTrustHtml(
         currentProject.config.logo
       );
+    }
+
+    if (currentProject.myRole === 'viewer') {
+      this.readOnly = true;
+      this.settingsForm.disable({ emitEvent: false });
     }
   }
 
@@ -165,6 +171,10 @@ export class SettingsComponent implements OnInit {
   }
 
   save(): void {
+    if (this.readOnly) {
+      return;
+    }
+
     if (this.settingsForm.invalid) {
       Object.keys(this.settingsForm.controls).forEach((key) => {
         this.settingsForm.get(key)?.markAsTouched();

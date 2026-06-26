@@ -3,6 +3,7 @@
 @tailwind components;
 @tailwind utilities;
 /* angular-cli file: src/styles.css */
+/* file path (not a bare specifier) because angular-calendar's "exports" map does not expose ./css */
 @import "../node_modules/angular-calendar/css/angular-calendar.css";
 
 /* Importing Bootstrap SCSS file. */

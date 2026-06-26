@@ -4,28 +4,52 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an Angular 18 scheduler application for creating and managing daily schedules with participants. The app allows users to create columns (places/locations), schedule tasks within those columns, assign participants to tasks, and export individual participant schedules as PDFs.
+This is a **pnpm monorepo** for a collaborative scheduler. It contains two applications:
+
+- **`apps/frontend`** (`@scheduler/frontend`) — the Angular 18 app for creating and managing daily schedules with participants: create columns (places/locations), schedule tasks within those columns, assign participants to tasks, and export individual participant schedules as PDFs.
+- **`apps/backend`** (`@scheduler/backend`) — a NestJS + Postgres (Kysely) API providing auth (Google OAuth + JWT), board persistence, invites, and realtime collaboration over Socket.IO.
+
+## Repository Structure
+
+```
+.
+├── pnpm-workspace.yaml      # workspace globs (apps/*)
+├── package.json             # root: private, workspace scripts (pnpm --filter ...)
+├── apps/
+│   ├── frontend/            # Angular app (angular.json, src/, public/, tailwind, eslint)
+│   └── backend/             # NestJS app (nest-cli.json, src/, test/, scripts/)
+└── Dockerfile               # workspace-aware; builds the frontend into an httpd image
+```
+
+Use pnpm (v10+, Node 22+). Install once at the root with `pnpm install` — there is a single root `pnpm-lock.yaml`.
 
 ## Development Commands
 
-### Starting Development Server
+Run from the repo root. Convenience scripts wrap pnpm filters; you can also use `pnpm --filter <pkg> <script>` directly.
+
+### Frontend (`@scheduler/frontend`)
 
 ```bash
-npm start              # Start dev server on localhost:4200
-npm run start:host     # Start dev server accessible on network (0.0.0.0)
+pnpm start:frontend                              # ng serve on localhost:4200
+pnpm --filter @scheduler/frontend start:host     # serve on 0.0.0.0 (network)
+pnpm build:frontend                              # production build to apps/frontend/dist/scheduler
+pnpm --filter @scheduler/frontend test           # Karma/Jasmine tests
 ```
 
-### Building
+### Backend (`@scheduler/backend`)
 
 ```bash
-npm run build          # Production build to dist/scheduler
-npm run watch          # Development build with watch mode
+pnpm start:backend                               # nest start --watch
+pnpm build:backend                               # nest build
+pnpm --filter @scheduler/backend test            # Jest (DB suites need a Postgres scheduler_test DB)
+pnpm --filter @scheduler/backend migrate         # run database migrations
 ```
 
-### Testing
+### Whole workspace
 
 ```bash
-npm test              # Run Karma/Jasmine tests
+pnpm build            # build every app (pnpm -r build)
+pnpm lint             # lint every app (pnpm -r lint)
 ```
 
 ## Architecture
@@ -72,6 +96,8 @@ The application has three main entities stored in localStorage:
 - `LogoService`: Manages custom SVG logo upload/storage with DOMPurify sanitization to prevent XSS
 
 ### Component Structure
+
+(rooted at `apps/frontend/src/`)
 
 ```
 app/

@@ -76,7 +76,7 @@ An intuitive web-based scheduler for managing multi-location events with partici
 
 ## 🏗 Architecture
 
-The project is a monorepo: the Angular app lives at the repository root and the NestJS backend lives in `backend/`. Anonymous use requires only the frontend; the backend is additive and selected only when a user is authenticated.
+The project is a **pnpm monorepo**: the Angular app lives in `apps/frontend` (`@scheduler/frontend`) and the NestJS backend in `apps/backend` (`@scheduler/backend`). Anonymous use requires only the frontend; the backend is additive and selected only when a user is authenticated.
 
 ```
 ┌──────────────────────────┐        REST  /api        ┌──────────────────────────┐
@@ -118,7 +118,8 @@ The project is a monorepo: the Angular app lives at the repository root and the 
 
 ### Prerequisites
 
-- **Node.js** v18 or higher (developed on Node 20) and npm
+- **Node.js** 22 or higher
+- **pnpm** 10 or higher (`corepack enable` will provide the pinned version)
 - **PostgreSQL** 16 running locally on port `5432`
 
 ### 1. Clone and install
@@ -127,12 +128,8 @@ The project is a monorepo: the Angular app lives at the repository root and the 
 git clone https://github.com/davidrojom/scheduler.git
 cd scheduler
 
-# Frontend (repo root)
-npm install
-
-# Backend
-cd backend && npm install
-cd ..
+# Install both apps from the workspace root (single lockfile)
+pnpm install
 ```
 
 > The frontend alone is enough to run the app anonymously. The steps below add the backend for accounts, persistence, and collaboration.
@@ -149,7 +146,7 @@ createdb scheduler_test   # used by the backend e2e tests
 Copy the example file and adjust as needed:
 
 ```bash
-cp backend/.env.example backend/.env
+cp apps/backend/.env.example apps/backend/.env
 ```
 
 | Variable               | Description                                                                 |
@@ -163,18 +160,18 @@ cp backend/.env.example backend/.env
 | `FRONTEND_URL`         | Frontend origin for CORS and redirects (`http://localhost:4200`)            |
 | `AUTH_TEST_MODE`       | When `true`, enables the local impersonation login path (`/api/auth/impersonate`) |
 
-> The Google credentials are optional and may stay as placeholders for local development; the real consent flow is not required. Set `AUTH_TEST_MODE=true` to enable the local impersonation login path used for development and automated testing. The impersonate endpoint is inert unless `AUTH_TEST_MODE=true`. `backend/.env` is gitignored, only `backend/.env.example` is versioned, never commit secrets.
+> The Google credentials are optional and may stay as placeholders for local development; the real consent flow is not required. Set `AUTH_TEST_MODE=true` to enable the local impersonation login path used for development and automated testing. The impersonate endpoint is inert unless `AUTH_TEST_MODE=true`. `apps/backend/.env` is gitignored, only `apps/backend/.env.example` is versioned, never commit secrets.
 
 ### 4. Run database migrations
 
 ```bash
-cd backend && npm run migrate
+pnpm --filter @scheduler/backend migrate
 ```
 
 ### 5. Start the backend
 
 ```bash
-cd backend && PORT=3100 npm run start:dev
+pnpm start:backend
 ```
 
 Verify it is up: `http://localhost:3100/api/health`.
@@ -182,7 +179,7 @@ Verify it is up: `http://localhost:3100/api/health`.
 ### 6. Start the frontend
 
 ```bash
-npm start
+pnpm start:frontend
 ```
 
 Open `http://localhost:4200`.
@@ -191,28 +188,38 @@ Open `http://localhost:4200`.
 
 ## 📜 Scripts
 
-### Frontend (repo root)
+Run from the repo root. The root `package.json` exposes convenience wrappers; you can always call any app script directly with `pnpm --filter <pkg> <script>`.
 
-| Command              | Description                                      |
-| -------------------- | ------------------------------------------------ |
-| `npm start`          | Start dev server on localhost:4200               |
-| `npm run start:host` | Start dev server accessible on network (0.0.0.0) |
-| `npm run build`      | Production build to `dist/scheduler`             |
-| `npm run watch`      | Development build with watch mode                |
-| `npm test`           | Run Karma/Jasmine tests                          |
-| `npm run lint`       | Run ESLint (angular-eslint)                      |
+### Workspace (root)
 
-### Backend (`backend/`)
+| Command           | Description                              |
+| ----------------- | ---------------------------------------- |
+| `pnpm install`    | Install all apps (single lockfile)       |
+| `pnpm build`      | Build every app (`pnpm -r build`)        |
+| `pnpm lint`       | Lint every app (`pnpm -r lint`)          |
 
-| Command               | Description                                       |
-| --------------------- | ------------------------------------------------- |
-| `npm run start:dev`   | Start NestJS in watch mode (`nest start --watch`) |
-| `npm run start`       | Start NestJS once                                 |
-| `npm run build`       | Build to `dist/`                                  |
-| `npm run migrate`     | Apply Kysely migrations (`tsx scripts/migrate.ts`) |
-| `npm test`            | Run Jest unit tests                               |
-| `npm run test:e2e`    | Run Jest e2e tests (supertest) against `scheduler_test` |
-| `npm run lint`        | Run ESLint                                        |
+### Frontend (`@scheduler/frontend`)
+
+| Command                                          | Description                                      |
+| ------------------------------------------------ | ------------------------------------------------ |
+| `pnpm start:frontend`                            | Start dev server on localhost:4200               |
+| `pnpm --filter @scheduler/frontend start:host`   | Start dev server accessible on network (0.0.0.0) |
+| `pnpm build:frontend`                            | Production build to `apps/frontend/dist/scheduler` |
+| `pnpm --filter @scheduler/frontend watch`        | Development build with watch mode                |
+| `pnpm --filter @scheduler/frontend test`         | Run Karma/Jasmine tests                          |
+| `pnpm --filter @scheduler/frontend lint`         | Run ESLint (angular-eslint)                      |
+
+### Backend (`@scheduler/backend`)
+
+| Command                                          | Description                                       |
+| ------------------------------------------------ | ------------------------------------------------- |
+| `pnpm start:backend`                             | Start NestJS in watch mode (`nest start --watch`) |
+| `pnpm --filter @scheduler/backend start`         | Start NestJS once                                 |
+| `pnpm build:backend`                             | Build to `apps/backend/dist/`                     |
+| `pnpm --filter @scheduler/backend migrate`       | Apply Kysely migrations (`tsx scripts/migrate.ts`) |
+| `pnpm --filter @scheduler/backend test`          | Run Jest unit tests                               |
+| `pnpm --filter @scheduler/backend test:e2e`      | Run Jest e2e tests (supertest) against `scheduler_test` |
+| `pnpm --filter @scheduler/backend lint`          | Run ESLint                                        |
 
 ---
 
@@ -221,21 +228,20 @@ Open `http://localhost:4200`.
 ### Frontend (Karma / Jasmine)
 
 ```bash
-npm test -- --watch=false
+pnpm --filter @scheduler/frontend test -- --watch=false
 ```
 
 Headless Chrome example:
 
 ```bash
-CHROME_BIN=/usr/bin/google-chrome npm test -- --watch=false --browsers=ChromeHeadlessNoSandbox
+CHROME_BIN=/usr/bin/google-chrome pnpm --filter @scheduler/frontend test -- --watch=false --browsers=ChromeHeadlessNoSandbox
 ```
 
 ### Backend (Jest)
 
 ```bash
-cd backend
-npm test -- --runInBand            # unit tests
-npm run test:e2e -- --runInBand    # e2e tests against scheduler_test
+pnpm --filter @scheduler/backend test -- --runInBand          # unit tests
+pnpm --filter @scheduler/backend test:e2e -- --runInBand      # e2e tests against scheduler_test
 ```
 
 The e2e suite runs against the real `scheduler_test` database, so make sure it exists and migrations have been applied.

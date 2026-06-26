@@ -13,9 +13,11 @@ logged-out usage; the DB-backed path is additive and used only when a user is au
 ## Requirements
 
 - Node.js 22+ and pnpm 10+
-- PostgreSQL (no Docker), with two databases:
+- PostgreSQL 16, with two databases:
   - `scheduler` for development
   - `scheduler_test` for the e2e test suite
+  - The easiest way to get both is the repo-root `docker-compose.yml` (see below); a
+    native local Postgres works too.
 
 ## Setup
 
@@ -56,7 +58,16 @@ production.
 
 ## Database & migrations
 
-Create the two databases (names must match `DATABASE_URL` for dev, and `scheduler_test` for e2e):
+Create the two databases (names must match `DATABASE_URL` for dev, and `scheduler_test` for e2e).
+
+**Option A — Docker (recommended).** From the repo root, start Postgres 16 with both databases
+created automatically (the init script also enables `pgcrypto`):
+
+```bash
+docker compose up -d        # postgres on localhost:5432, user/password: postgres/postgres
+```
+
+**Option B — native Postgres.**
 
 ```bash
 createdb scheduler

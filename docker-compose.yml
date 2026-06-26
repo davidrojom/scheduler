@@ -1,0 +1,32 @@
+# Local Postgres for the backend (@scheduler/backend).
+# Brings up a single Postgres 16 instance with the `scheduler` database and,
+# via the init script, the `scheduler_test` database used by the e2e suite.
+#
+#   docker compose up -d        # start in the background
+#   docker compose down         # stop (keeps data)
+#   docker compose down -v       # stop and wipe the data volume
+#
+# Matches DATABASE_URL=postgresql://postgres:postgres@localhost:5432/scheduler
+services:
+  db:
+    image: postgres:16
+    container_name: scheduler-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: scheduler
+    ports:
+      - '5432:5432'
+    volumes:
+      - scheduler-db-data:/var/lib/postgresql/data
+      # Runs only on first init (empty data dir): creates scheduler_test + pgcrypto.
+      - ./apps/backend/scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d scheduler']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  scheduler-db-data:

@@ -4,20 +4,20 @@ import {
   HttpTestingController,
 } from '@angular/common/http/testing';
 
-import { EMPTY } from 'rxjs';
+import { EMPTY, Observable } from 'rxjs';
 
 import { ApiBoardPersistence } from './api-board-persistence.service';
 import { environment } from '../../../environments/environment';
 import { Task } from '../../pages/scheduler/components/modals/task/task-modal.component';
 import { CollaborationService } from '../collaboration/collaboration.service';
 
-const collabStub: Partial<CollaborationService> = {
-  remoteEvents$: EMPTY,
-  resync$: EMPTY,
-  isLive: () => false,
-  emitOp: () => false,
-  setActiveBoard: () => undefined,
-};
+interface CollabStub {
+  remoteEvents$: Observable<unknown>;
+  resync$: Observable<unknown>;
+  isLive: jasmine.Spy;
+  emitOp: jasmine.Spy;
+  setActiveBoard: jasmine.Spy;
+}
 
 const ISO = '2024-01-01T00:00:00.000Z';
 
@@ -75,12 +75,21 @@ function task(
 describe('ApiBoardPersistence', () => {
   let service: ApiBoardPersistence;
   let httpMock: HttpTestingController;
+  let collab: CollabStub;
   const boardsUrl = `${environment.apiBaseUrl}/boards`;
 
   beforeEach(() => {
+    collab = {
+      remoteEvents$: EMPTY,
+      resync$: EMPTY,
+      isLive: jasmine.createSpy('isLive').and.returnValue(false),
+      emitOp: jasmine.createSpy('emitOp').and.returnValue(false),
+      setActiveBoard: jasmine.createSpy('setActiveBoard'),
+    };
+
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      providers: [{ provide: CollaborationService, useValue: collabStub }],
+      providers: [{ provide: CollaborationService, useValue: collab }],
     });
     service = TestBed.inject(ApiBoardPersistence);
     httpMock = TestBed.inject(HttpTestingController);
@@ -447,6 +456,121 @@ describe('ApiBoardPersistence', () => {
       const del = matches.find((r) => r.request.method === 'DELETE')!;
       expect(del.request.body).toEqual({ name: 'Beto' });
       del.flush({ success: true });
+    }));
+  });
+
+  describe('board:update realtime dispatch', () => {
+    function loadBoard(detail: ReturnType<typeof detailDto>) {
+      service.refreshBoards().subscribe();
+      httpMock
+        .expectOne(boardsUrl)
+        .flush([
+          { id: 'b1', name: 'Board', myRole: 'owner', config: {}, updatedAt: ISO },
+        ]);
+      service.switchProject('b1').subscribe();
+      httpMock.expectOne(`${boardsUrl}/b1`).flush(detail);
+      flushMicrotasks();
+    }
+
+    it('emits board:update over the socket when live (no REST PATCH)', () => {
+      service.refreshBoards().subscribe();
+      httpMock
+        .expectOne(boardsUrl)
+        .flush([
+          { id: 'b1', name: 'Old', myRole: 'owner', config: {}, updatedAt: ISO },
+        ]);
+
+      collab.isLive.and.returnValue(true);
+      collab.emitOp.and.returnValue(true);
+
+      let done = false;
+      service
+        .updateProject('b1', { name: 'Renamed' })
+        .subscribe(() => (done = true));
+
+      expect(collab.emitOp).toHaveBeenCalledWith('board:update', {
+        boardId: 'b1',
+        changes: { name: 'Renamed' },
+      });
+      // While live the op travels over the socket — never as a REST PATCH.
+      httpMock.expectNone(`${boardsUrl}/b1`);
+      expect(done).toBeTrue();
+      expect(service.getProjects().find((p) => p.id === 'b1')?.name).toBe(
+        'Renamed'
+      );
+    });
+
+    it('falls back to the REST PATCH when realtime is unavailable', () => {
+      service.refreshBoards().subscribe();
+      httpMock
+        .expectOne(boardsUrl)
+        .flush([
+          { id: 'b1', name: 'Board', myRole: 'owner', config: {}, updatedAt: ISO },
+        ]);
+
+      const config = { dayStartHour: 8, dayEndHour: 20, segmentsByHour: 4 };
+      let done = false;
+      service.updateProject('b1', { config }).subscribe(() => (done = true));
+
+      expect(collab.emitOp).not.toHaveBeenCalled();
+      const req = httpMock.expectOne(`${boardsUrl}/b1`);
+      expect(req.request.method).toBe('PATCH');
+      expect(req.request.body).toEqual({ config });
+      req.flush(boardDto('b1', 'Board'));
+      expect(done).toBeTrue();
+    });
+
+    it('emits board:update carrying the logo over the socket when live', fakeAsync(() => {
+      loadBoard(
+        detailDto('b1', 'Board', {
+          columns: [{ id: 'c1', title: 'Stage', position: 0 }],
+        })
+      );
+
+      collab.isLive.and.returnValue(true);
+      collab.emitOp.and.returnValue(true);
+
+      service.setConfig({
+        columns: [{ id: 'c1', title: 'Stage' }],
+        tasks: [],
+        participants: [],
+        logo: '<svg>logo</svg>',
+      });
+
+      expect(collab.emitOp).toHaveBeenCalledWith(
+        'board:update',
+        jasmine.objectContaining({
+          boardId: 'b1',
+          changes: jasmine.objectContaining({
+            config: jasmine.objectContaining({ logo: '<svg>logo</svg>' }),
+          }),
+        })
+      );
+      // No REST PATCH to the board root while live.
+      httpMock.expectNone(`${boardsUrl}/b1`);
+    }));
+
+    it('falls back to the REST PATCH for a logo change when not live', fakeAsync(() => {
+      loadBoard(
+        detailDto('b1', 'Board', {
+          columns: [{ id: 'c1', title: 'Stage', position: 0 }],
+        })
+      );
+
+      service.setConfig({
+        columns: [{ id: 'c1', title: 'Stage' }],
+        tasks: [],
+        participants: [],
+        logo: '<svg>logo</svg>',
+      });
+
+      expect(collab.emitOp).not.toHaveBeenCalled();
+      const req = httpMock.expectOne(`${boardsUrl}/b1`);
+      expect(req.request.method).toBe('PATCH');
+      expect(
+        (req.request.body as { config: { logo?: string } }).config.logo
+      ).toBe('<svg>logo</svg>');
+      req.flush(boardDto('b1', 'Board'));
     }));
   });
 });

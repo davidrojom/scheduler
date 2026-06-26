@@ -215,15 +215,23 @@ export class ApiBoardPersistence implements BoardPersistence {
       }
     }
 
-    const body: { name?: string; config?: ProjectConfig } = {};
+    const changes: { name?: string; config?: ProjectConfig } = {};
     if (updates.name !== undefined) {
-      body.name = updates.name;
+      changes.name = updates.name;
     }
     if (updates.config !== undefined) {
-      body.config = updates.config;
+      changes.config = updates.config;
     }
 
-    return this.http.patch<BoardDto>(`${this.baseUrl}/${id}`, body).pipe(
+    const request$ = this.dispatch(id, 'board:update', { changes }, () =>
+      this.http.patch<BoardDto>(`${this.baseUrl}/${id}`, changes)
+    );
+
+    if (!request$) {
+      return of(this._projects[index]);
+    }
+
+    return request$.pipe(
       map(() => this._projects[index]),
       catchError(() => of(this._projects[index]))
     );
@@ -637,7 +645,8 @@ export class ApiBoardPersistence implements BoardPersistence {
   private applyLogo(
     boardId: string,
     previousLogo: string | null,
-    nextLogo: string | null
+    nextLogo: string | null,
+    forceRest = false
   ): void {
     if (previousLogo === nextLogo) {
       return;
@@ -652,7 +661,13 @@ export class ApiBoardPersistence implements BoardPersistence {
       this._currentProject = { ...this._currentProject, config };
     }
 
-    this.fire(this.http.patch(`${this.baseUrl}/${boardId}`, { config }));
+    this.dispatch(
+      boardId,
+      'board:update',
+      { changes: { config } },
+      () => this.http.patch(`${this.baseUrl}/${boardId}`, { config }),
+      forceRest
+    );
   }
 
   private toTaskPayload(task: Task): {

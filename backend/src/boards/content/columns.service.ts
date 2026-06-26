@@ -1,5 +1,11 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { sql } from 'kysely';
+import { RealtimeBroadcaster } from '../../collaboration/realtime-broadcaster';
 import { Database, KYSELY } from '../../database/database.module';
 import { Column } from '../../database/database.types';
 import { BoardColumnDto } from '../boards.types';
@@ -8,7 +14,10 @@ import { UpdateColumnDto } from './dto/update-column.dto';
 
 @Injectable()
 export class ColumnsService {
-  constructor(@Inject(KYSELY) private readonly db: Database) {}
+  constructor(
+    @Inject(KYSELY) private readonly db: Database,
+    @Optional() private readonly realtime?: RealtimeBroadcaster,
+  ) {}
 
   async list(boardId: string): Promise<BoardColumnDto[]> {
     const rows = await this.db
@@ -33,7 +42,9 @@ export class ColumnsService {
       })
       .returningAll()
       .executeTakeFirstOrThrow();
-    return mapColumn(row);
+    const column = mapColumn(row);
+    this.realtime?.emitToBoard(boardId, 'column:created', { boardId, column });
+    return column;
   }
 
   async update(
@@ -55,7 +66,9 @@ export class ColumnsService {
     if (!row) {
       throw new NotFoundException('Column not found');
     }
-    return mapColumn(row);
+    const column = mapColumn(row);
+    this.realtime?.emitToBoard(boardId, 'column:updated', { boardId, column });
+    return column;
   }
 
   async remove(boardId: string, columnId: string): Promise<void> {
@@ -68,6 +81,10 @@ export class ColumnsService {
     if (!deleted) {
       throw new NotFoundException('Column not found');
     }
+    this.realtime?.emitToBoard(boardId, 'column:deleted', {
+      boardId,
+      columnId,
+    });
   }
 
   async reorder(
@@ -84,7 +101,12 @@ export class ColumnsService {
           .execute();
       }
     });
-    return this.list(boardId);
+    const columns = await this.list(boardId);
+    this.realtime?.emitToBoard(boardId, 'column:reordered', {
+      boardId,
+      columns,
+    });
+    return columns;
   }
 
   private async nextPosition(boardId: string): Promise<number> {

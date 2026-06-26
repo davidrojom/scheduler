@@ -418,4 +418,41 @@ describe('CollaborationGateway (e2e)', () => {
       expect(evt.member.userId).toBe(editorId);
     });
   });
+
+  describe('board:leave guard', () => {
+    it('emits exactly one presence:left to the room when a joined socket leaves', async () => {
+      const owner = await joined(ownerToken);
+      const editor = await joined(editorToken);
+
+      let leftCount = 0;
+      let lastLeft: PresenceEventPayload | undefined;
+      owner.on('presence:left', (p: PresenceEventPayload) => {
+        leftCount += 1;
+        lastLeft = p;
+      });
+
+      editor.emit('board:leave', { boardId });
+      await delay(400);
+
+      expect(leftCount).toBe(1);
+      expect(lastLeft?.boardId).toBe(boardId);
+      expect(lastLeft?.member.userId).toBe(editorId);
+    });
+
+    it('emits NO presence:left when a socket that never joined sends board:leave', async () => {
+      const owner = await joined(ownerToken);
+      const editor = open(editorToken);
+      await waitConnect(editor);
+
+      let leftCount = 0;
+      owner.on('presence:left', () => {
+        leftCount += 1;
+      });
+
+      editor.emit('board:leave', { boardId });
+      await delay(400);
+
+      expect(leftCount).toBe(0);
+    });
+  });
 });

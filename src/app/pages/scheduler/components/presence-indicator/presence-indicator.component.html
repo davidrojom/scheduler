@@ -1,0 +1,28 @@
+@if (members$ | async; as members) {
+@if (members.length > 0) {
+<div
+  class="flex items-center gap-1.5"
+  title="Collaborators on this board"
+  data-testid="presence-indicator"
+>
+  <div class="flex -space-x-2">
+    @for (member of members; track member.userId) {
+    <span
+      class="w-8 h-8 rounded-full grid place-items-center text-sm font-bold text-white uppercase ring-2 ring-gray-800"
+      [style.background-color]="member.color"
+      [attr.data-user-id]="member.userId"
+      [title]="member.name"
+    >
+      {{ initial(member) }}
+    </span>
+    }
+  </div>
+  <span
+    class="hidden md:block text-sm text-gray-200 font-medium ml-1"
+    data-testid="presence-count"
+  >
+    {{ members.length }}
+  </span>
+</div>
+}
+}

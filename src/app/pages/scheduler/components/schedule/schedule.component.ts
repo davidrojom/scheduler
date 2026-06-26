@@ -80,6 +80,8 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
 
   columnId = input.required<string>();
 
+  readOnly = input<boolean>(false);
+
   view: CalendarView = CalendarView.Day;
 
   CalendarView = CalendarView;
@@ -143,10 +145,11 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
               primary: color.primary,
               secondary: color.secondary,
             },
-            draggable: task.draggable,
-            resizable: this.isMobile
-              ? { beforeStart: false, afterEnd: false }
-              : task.resizable,
+            draggable: !this.readOnly() && task.draggable,
+            resizable:
+              this.readOnly() || this.isMobile
+                ? { beforeStart: false, afterEnd: false }
+                : task.resizable,
             participants: task.participants,
             columnId: task.columnId,
           };
@@ -475,6 +478,10 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
     newStart,
     newEnd,
   }: CalendarEventTimesChangedEvent): void {
+    if (this.readOnly()) {
+      return;
+    }
+
     (window as any).umami?.track('task-drag-resize');
 
     const updatedTasks: Task[] = this.tasks.map((iEvent) => {
@@ -531,6 +538,10 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
 
   handleEvent(action: 'task' | 'segment', task: CalendarEvent): void {
     if (action === 'segment') {
+      if (this.readOnly()) {
+        return;
+      }
+
       // Track opening new task modal
       (window as any).umami?.track('open-new-task-modal');
 
@@ -565,6 +576,7 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
 
       modalRef.componentInstance.modalData = {
         type: 'edit',
+        readOnly: this.readOnly(),
         task: {
           ...task,
           columnId: this.columnId(),

@@ -21,6 +21,7 @@ export interface ParticipantStats {
 export class ParticipantItemComponent {
   @Input({ required: true }) participant!: ParticipantStats;
   @Input() id?: string;
+  @Input() readOnly = false;
   @Output() delete = new EventEmitter<string>();
   @Output() removeFromTask = new EventEmitter<{ participantName: string; taskId: string }>();
   @Output() toggleExpanded = new EventEmitter<void>();

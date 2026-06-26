@@ -48,6 +48,8 @@ export class TaskModalComponent implements OnInit {
 
   segmentsPerHour = SEGMENTS_BY_HOUR;
 
+  readOnly = false;
+
   modalData!:
     | {
         type: 'add';
@@ -56,6 +58,7 @@ export class TaskModalComponent implements OnInit {
       }
     | {
         type: 'edit';
+        readOnly?: boolean;
         task: Task;
         saveHandler: (task: Task) => void;
         deleteHandler: (taskId: string) => void;
@@ -148,18 +151,24 @@ export class TaskModalComponent implements OnInit {
       });
     }
 
-    this.columnTitle.nativeElement.focus();
-
     this.updateParticipantsWithConflictInfo();
 
     this.checkConflicts();
+
+    if (this.modalData.type === 'edit' && this.modalData.readOnly) {
+      this.readOnly = true;
+      this.form.disable({ emitEvent: false });
+      return;
+    }
+
+    this.columnTitle.nativeElement.focus();
   }
   closeModal() {
     this.activeModal.close();
   }
 
   deleteTask(taskId: string) {
-    if (this.modalData.type !== 'edit') {
+    if (this.readOnly || this.modalData.type !== 'edit') {
       return;
     }
 
@@ -168,7 +177,7 @@ export class TaskModalComponent implements OnInit {
   }
 
   save() {
-    if (!this.form.valid) {
+    if (this.readOnly || !this.form.valid) {
       return;
     }
 

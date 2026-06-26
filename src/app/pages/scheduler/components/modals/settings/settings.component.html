@@ -4,6 +4,9 @@
   </div>
 
   <div class="overflow-y-auto flex-1 min-h-0 px-4 pb-4 overflow-y-auto">
+    <div *ngIf="readOnly" class="alert alert-info" role="alert">
+      You have view-only access to this board. Settings cannot be changed.
+    </div>
     <form [formGroup]="settingsForm" *ngIf="settingsForm">
       <div class="mb-4">
         <label for="name" class="form-label fw-bold">Project Name</label>
@@ -27,7 +30,7 @@
 
       <div class="mb-4">
         <label class="form-label fw-bold">Logo (Optional)</label>
-        <div class="d-flex flex-column gap-2">
+        <div class="d-flex flex-column gap-2" *ngIf="!readOnly">
           <input
             type="file"
             class="form-control"
@@ -51,6 +54,7 @@
             <div [innerHTML]="logoPreview"></div>
           </div>
           <button
+            *ngIf="!readOnly"
             type="button"
             class="btn btn-danger btn-sm"
             (click)="removeLogo()"
@@ -139,7 +143,7 @@
         </div>
       </div>
 
-      <div class="alert alert-warning" role="alert">
+      <div *ngIf="!readOnly" class="alert alert-warning" role="alert">
         <strong>Note:</strong> Changing schedule configuration will reload the
         page to apply changes.
       </div>
@@ -151,6 +155,7 @@
       Cancel
     </button>
     <button
+      *ngIf="!readOnly"
       type="button"
       class="btn btn-primary"
       (click)="save()"

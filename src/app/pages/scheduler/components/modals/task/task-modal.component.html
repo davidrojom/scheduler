@@ -91,6 +91,7 @@
       </ng-select>
     </div>
 
+    @if (!readOnly) {
     <footer class="flex flex-row gap-2 items-center justify-between">
       @if (modalData.type==='edit') {
       <button
@@ -115,5 +116,6 @@
         Save
       </button>
     </footer>
+    }
   </form>
 </section>

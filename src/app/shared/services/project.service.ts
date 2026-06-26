@@ -40,6 +40,22 @@ export class ProjectService {
     return this.persistence.getProjects();
   }
 
+  /**
+   * Whether the active board accepts content mutations for the current user.
+   * Anonymous localStorage boards (no role) and owner/editor DB boards are
+   * editable; only an authenticated `viewer` is read-only. Mirrors the
+   * server-side role enforcement so the UI never offers a control the API rejects.
+   */
+  get canEditCurrentBoard$(): Observable<boolean> {
+    return this.currentProject$.pipe(
+      map((project) => project?.myRole !== 'viewer')
+    );
+  }
+
+  get isCurrentBoardEditable(): boolean {
+    return this.currentProject?.myRole !== 'viewer';
+  }
+
   constructor(
     private readonly persistence: PersistenceFacade,
     private readonly authService: AuthService,

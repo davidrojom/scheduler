@@ -13,6 +13,7 @@
       @for (stat of participantStats; track stat.name) {
         <sch-participant-item
           [participant]="stat"
+          [readOnly]="!canEdit"
           [id]="'participant-' + stat.name"
           (delete)="deleteParticipant($event)"
           (removeFromTask)="onRemoveParticipantFromTask($event)"
@@ -24,6 +25,7 @@
 </div>
 
 <div class="modal-footer flex justify-between items-center">
+  @if (canEdit) {
   <div class="flex gap-2 items-center flex-1">
     <input
       #newParticipantInput
@@ -43,6 +45,7 @@
       Add
     </button>
   </div>
+  }
   <button
     type="button"
     class="btn btn-secondary"

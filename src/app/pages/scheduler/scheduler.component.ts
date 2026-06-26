@@ -15,6 +15,7 @@ import {
   moveItemInArray,
 } from '@angular/cdk/drag-drop';
 import { ScrollingModule } from '@angular/cdk/scrolling';
+import { AsyncPipe } from '@angular/common';
 import { ScheduleComponent } from './components/schedule/schedule.component';
 import {
   FormArray,
@@ -25,7 +26,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { v4 } from 'uuid';
-import { distinctUntilChanged, map } from 'rxjs';
+import { Observable, distinctUntilChanged, map } from 'rxjs';
 import { ColumnsService } from '../../shared/services/columns.service';
 import { ProjectService } from '../../shared/services/project.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -52,6 +53,7 @@ import { AuthMenuComponent } from '../../shared/ui/components/auth-menu/auth-men
     CdkDropList,
     CdkDrag,
     ScrollingModule,
+    AsyncPipe,
     ScheduleComponent,
     FormsModule,
     ReactiveFormsModule,
@@ -77,6 +79,7 @@ export class SchedulerComponent implements OnInit {
 
   exportHash = '';
   mobileMenuOpen = false;
+  canEdit$!: Observable<boolean>;
 
   get isMobile(): boolean {
     return this.mobileDetectionService.isMobile;
@@ -94,6 +97,8 @@ export class SchedulerComponent implements OnInit {
     private readonly projectService: ProjectService
   ) {}
   ngOnInit(): void {
+    this.canEdit$ = this.projectService.canEditCurrentBoard$;
+
     this.columnsService.columns$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((columns) => {
@@ -123,6 +128,10 @@ export class SchedulerComponent implements OnInit {
   }
 
   drop(event: CdkDragDrop<string[]>) {
+    if (!this.projectService.isCurrentBoardEditable) {
+      return;
+    }
+
     (window as any).umami?.track('column-reorder');
 
     moveItemInArray(
@@ -135,6 +144,10 @@ export class SchedulerComponent implements OnInit {
   }
 
   addColumn() {
+    if (!this.projectService.isCurrentBoardEditable) {
+      return;
+    }
+
     this.form.controls.columns.push(
       new FormGroup({
         id: new FormControl<string>(v4(), {
@@ -154,6 +167,10 @@ export class SchedulerComponent implements OnInit {
   }
 
   removeColumn(columnId: string) {
+    if (!this.projectService.isCurrentBoardEditable) {
+      return;
+    }
+
     const index = this.form.controls.columns.controls.findIndex(
       (control) => control.controls.id.value === columnId
     );
@@ -204,6 +221,10 @@ export class SchedulerComponent implements OnInit {
   }
 
   wipeData() {
+    if (!this.projectService.isCurrentBoardEditable) {
+      return;
+    }
+
     this.columnsService.wipeColumns();
     this.tasksService.wipeTasks();
     this.participantsService.wipeParticipants();
@@ -239,6 +260,10 @@ export class SchedulerComponent implements OnInit {
   }
 
   import(hash: string) {
+    if (!this.projectService.isCurrentBoardEditable) {
+      return;
+    }
+
     const data = JSON.parse(atob(hash));
     this.configService.setConfig(data);
     this.reloadBoard();

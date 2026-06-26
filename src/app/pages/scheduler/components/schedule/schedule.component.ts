@@ -10,7 +10,7 @@ import {
   ElementRef,
   AfterViewInit,
 } from '@angular/core';
-import { Subject } from 'rxjs';
+import { Subject, distinctUntilChanged, filter, map } from 'rxjs';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import {
   CalendarEvent,
@@ -27,6 +27,7 @@ import { TASK_COLORS } from '../../../../shared/constants';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CustomDateFormatter } from '../../../../shared/utils/date-formatter';
 import { ProjectService } from '../../../../shared/services/project.service';
+import { Project } from '../../../../shared/models/project.model';
 
 interface Task {
   id: string;
@@ -123,10 +124,28 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
   ) {}
 
   ngOnInit(): void {
-    const config = this.projectService.getProjectConfig();
-    this.hourSegments = config.segmentsByHour;
-    this.dayStartHour = config.dayStartHour;
-    this.dayEndHour = config.dayEndHour;
+    // The grid's hour range/segment density follows the active board's config
+    // reactively: a settings save re-emits currentProject$, so the calendar
+    // re-renders in place without a full page reload.
+    this.projectService.currentProject$
+      .pipe(
+        filter((project): project is Project => !!project),
+        map((project) => project.config),
+        distinctUntilChanged(
+          (a, b) =>
+            a.dayStartHour === b.dayStartHour &&
+            a.dayEndHour === b.dayEndHour &&
+            a.segmentsByHour === b.segmentsByHour
+        ),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((config) => {
+        this.hourSegments = config.segmentsByHour;
+        this.dayStartHour = config.dayStartHour;
+        this.dayEndHour = config.dayEndHour;
+        this.refresh.next();
+        this.changeDetector.markForCheck();
+      });
 
     this.tasksService.tasks$
       .pipe(takeUntilDestroyed(this.destroyRef))

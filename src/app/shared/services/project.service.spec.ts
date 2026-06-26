@@ -179,6 +179,30 @@ describe('ProjectService (DB boards)', () => {
     expect(projects.length).toBe(0);
   });
 
+  it('re-emits currentProject$ with the updated name/config on updateProject (anonymous, no reload, no backend calls)', () => {
+    const service = createService();
+    const current = service.projects[0];
+
+    const emissions: (Project | null)[] = [];
+    service.currentProject$.subscribe((p) => emissions.push(p));
+
+    service
+      .updateProject(current.id, {
+        name: 'Renamed Board',
+        config: { dayStartHour: 8, dayEndHour: 18, segmentsByHour: 4 },
+      })
+      .subscribe();
+
+    const latest = emissions[emissions.length - 1];
+    expect(latest!.name).toBe('Renamed Board');
+    expect(latest!.config.dayStartHour).toBe(8);
+    expect(latest!.config.dayEndHour).toBe(18);
+    expect(latest!.config.segmentsByHour).toBe(4);
+
+    // Anonymous boards persist to localStorage only; no /api/* traffic.
+    httpMock.expectNone(() => true);
+  });
+
   it('blocks deleting the last localStorage board when anonymous', () => {
     const service = createService();
     spyOn(window, 'alert');

@@ -38,6 +38,7 @@ import { MobileDetectionService } from '../../shared/services/mobile-detection.s
 import { ParticipantStatsModalComponent } from './components/modals/participant-stats/participant-stats-modal.component';
 import { SettingsComponent } from './components/modals/settings/settings.component';
 import { ProjectSwitcherComponent } from './components/project-switcher/project-switcher.component';
+import { ShareInviteComponent } from './components/share-invite/share-invite.component';
 import { AuthMenuComponent } from '../../shared/ui/components/auth-menu/auth-menu.component';
 
 @Component({
@@ -55,6 +56,7 @@ import { AuthMenuComponent } from '../../shared/ui/components/auth-menu/auth-men
     FormsModule,
     ReactiveFormsModule,
     ProjectSwitcherComponent,
+    ShareInviteComponent,
     AuthMenuComponent,
   ],
 })

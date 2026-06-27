@@ -1,0 +1,121 @@
+<ng-container *ngIf="canView$ | async">
+  <button
+    hlmBtn
+    variant="outline"
+    type="button"
+    class="shrink-0 px-3 md:px-4"
+    (click)="open(collaboratorsModal)"
+    title="Collaborators"
+    aria-label="Collaborators"
+    data-umami-event="open-collaborators"
+  >
+    <i class="ph ph-users-three text-lg"></i>
+    <span class="hidden md:block">Collaborators</span>
+  </button>
+</ng-container>
+
+<ng-template #collaboratorsModal let-modal>
+  <div class="flex items-center justify-between gap-4 border-b border-border px-6 py-4">
+    <h4 class="text-lg font-semibold tracking-tight" id="collaborators-modal">
+      Collaborators
+    </h4>
+    <button
+      type="button"
+      class="grid h-8 w-8 -mr-2 place-content-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+      aria-label="Close"
+      (click)="modal.dismiss()"
+    >
+      <i class="ph ph-x text-lg"></i>
+    </button>
+  </div>
+
+  <div class="px-6 py-5 flex flex-col gap-3">
+    <p *ngIf="loading" class="text-sm text-muted-foreground">Loading…</p>
+
+    <ul *ngIf="!loading" class="flex flex-col gap-2">
+      <li
+        *ngFor="let member of members"
+        class="flex items-center gap-3 rounded-md border border-border px-3 py-2"
+        [attr.data-member-id]="member.userId"
+      >
+        <img
+          *ngIf="member.avatarUrl"
+          [src]="member.avatarUrl"
+          alt=""
+          class="h-9 w-9 rounded-full object-cover shrink-0"
+        />
+        <span
+          *ngIf="!member.avatarUrl"
+          class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary font-semibold uppercase text-primary-foreground"
+        >
+          {{ initials(member) }}
+        </span>
+
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-medium text-foreground">
+            {{ member.name || member.email }}
+          </p>
+          <p class="truncate text-xs text-muted-foreground">{{ member.email }}</p>
+        </div>
+
+        <span
+          hlmBadge
+          [variant]="member.role === 'owner' ? 'default' : 'secondary'"
+          class="shrink-0 capitalize"
+        >
+          {{ member.role }}
+        </span>
+
+        <ng-container *ngIf="(isOwner$ | async) && member.role !== 'owner'">
+          <ng-container *ngIf="confirmingUserId === member.userId; else removeBtn">
+            <button
+              hlmBtn
+              variant="destructive"
+              size="sm"
+              type="button"
+              class="shrink-0"
+              [disabled]="removingUserId === member.userId"
+              (click)="remove(member.userId)"
+              [attr.data-confirm-remove]="member.userId"
+            >
+              {{ removingUserId === member.userId ? 'Removing…' : 'Confirm' }}
+            </button>
+            <button
+              hlmBtn
+              variant="ghost"
+              size="sm"
+              type="button"
+              class="shrink-0"
+              [disabled]="removingUserId === member.userId"
+              (click)="cancelRemove()"
+            >
+              Cancel
+            </button>
+          </ng-container>
+          <ng-template #removeBtn>
+            <button
+              hlmBtn
+              variant="outline"
+              size="sm"
+              type="button"
+              class="shrink-0"
+              (click)="askRemove(member.userId)"
+              [attr.data-remove-member]="member.userId"
+              [attr.aria-label]="'Remove ' + (member.name || member.email)"
+            >
+              <i class="ph ph-user-minus text-base"></i>
+            </button>
+          </ng-template>
+        </ng-container>
+      </li>
+    </ul>
+
+    <p *ngIf="errorMessage" class="text-sm text-destructive">{{ errorMessage }}</p>
+  </div>
+
+  <div class="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+    <button hlmBtn variant="outline" type="button" (click)="modal.dismiss()">
+      Close
+    </button>
+  </div>
+</ng-template>

@@ -320,9 +320,9 @@ describe('Boards (e2e)', () => {
         .get(`/api/boards/${boardId}/members`)
         .set('Authorization', bearer(aliceToken))
         .expect(200);
-      expect((members.body as { userId: string }[]).map((m) => m.userId)).toEqual(
-        [aliceId],
-      );
+      expect(
+        (members.body as { userId: string }[]).map((m) => m.userId),
+      ).toEqual([aliceId]);
 
       // The removed user can no longer read the board.
       await request(httpServer)

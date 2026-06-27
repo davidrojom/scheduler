@@ -16,6 +16,7 @@ import { PersistenceFacade } from '../persistence/persistence-facade.service';
 import { ProjectUpdate } from '../persistence/board-persistence';
 import { BoardMigrationService } from '../persistence/board-migration.service';
 import { BoardSyncScope } from '../collaboration/collab-content.reducer';
+import { CollaborationService } from '../collaboration/collaboration.service';
 import { AuthService } from './auth.service';
 
 @Injectable({
@@ -69,7 +70,8 @@ export class ProjectService {
   constructor(
     private readonly persistence: PersistenceFacade,
     private readonly authService: AuthService,
-    private readonly migration: BoardMigrationService
+    private readonly migration: BoardMigrationService,
+    private readonly collab: CollaborationService
   ) {
     // Auth state drives which board set is shown: anonymous loads localStorage
     // synchronously; authenticated runs the first-login local→DB migration
@@ -97,6 +99,46 @@ export class ProjectService {
           this._currentProject$.next(this.persistence.getCurrentProject());
         }
       });
+
+    // The owner removed me from a board: drop it locally and switch away. Other
+    // members' removals are handled by the collaborators modal, not here.
+    this.collab.memberRemoved$
+      .pipe(takeUntilDestroyed())
+      .subscribe(({ boardId, userId }) => {
+        if (this.authService.currentUser?.id === userId) {
+          this.handleRemovedFromBoard(boardId);
+        }
+      });
+  }
+
+  /**
+   * Removes a board the server revoked access to from local state and, if it was
+   * active, opens whatever board remains (or clears the view when none is left).
+   * Mirrors {@link deleteProject} but issues no DELETE.
+   */
+  private handleRemovedFromBoard(id: string): void {
+    if (!this.persistence.getProjects().some((p) => p.id === id)) {
+      return;
+    }
+    const wasCurrent = this.persistence.getCurrentProject()?.id === id;
+
+    this.persistence.removeBoardLocally(id);
+    this._projects$.next(this.persistence.getProjects());
+
+    if (!wasCurrent) {
+      return;
+    }
+    const newCurrent = this.persistence.getCurrentProject();
+    if (newCurrent) {
+      this.persistence.switchProject(newCurrent.id).subscribe({
+        next: () =>
+          this._currentProject$.next(this.persistence.getCurrentProject()),
+        error: () =>
+          this._currentProject$.next(this.persistence.getCurrentProject()),
+      });
+    } else {
+      this._currentProject$.next(null);
+    }
   }
 
   private migrateOnLogin$(): Observable<void> {

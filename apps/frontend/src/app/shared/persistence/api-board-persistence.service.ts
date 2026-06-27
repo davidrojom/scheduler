@@ -257,6 +257,24 @@ export class ApiBoardPersistence implements BoardPersistence {
       .subscribe({ error: () => undefined });
   }
 
+  /**
+   * Drops a board from local state after the server revoked the current user's
+   * access (the owner removed them). Unlike {@link deleteProject} it issues no
+   * DELETE — the membership is already gone server-side — and it never guards
+   * the "last board" case because losing access can legitimately leave none.
+   */
+  removeBoardLocally(id: string): void {
+    this._projects = this._projects.filter((p) => p.id !== id);
+    this._pendingCreates.delete(id);
+    if (this._currentProject?.id === id) {
+      this._currentProject = this._projects[0] ?? null;
+      if (!this._currentProject) {
+        this._content = { ...EMPTY_CONTENT };
+      }
+      this.collab.setActiveBoard(this._currentProject?.id ?? null);
+    }
+  }
+
   switchProject(id: string): Observable<void> {
     const pending$ = this._pendingCreates.get(id);
     const ready$ = pending$ ? pending$.pipe(catchError(() => of(null))) : of(null);

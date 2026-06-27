@@ -73,6 +73,15 @@ export class PersistenceFacade implements BoardPersistence {
     this.active.deleteProject(id);
   }
 
+  /**
+   * Drops a board from local state without a server DELETE, for when the server
+   * already revoked access (the owner removed the user). Only DB boards gain
+   * collaborators, so this delegates straight to the API strategy.
+   */
+  removeBoardLocally(id: string): void {
+    this.api.removeBoardLocally(id);
+  }
+
   switchProject(id: string): Observable<void> {
     return this.active.switchProject(id);
   }

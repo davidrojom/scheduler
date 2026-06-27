@@ -3,7 +3,13 @@ import {
   HttpClientTestingModule,
   HttpTestingController,
 } from '@angular/common/http/testing';
-import { BehaviorSubject, EMPTY, Observable, distinctUntilChanged } from 'rxjs';
+import {
+  BehaviorSubject,
+  EMPTY,
+  Observable,
+  Subject,
+  distinctUntilChanged,
+} from 'rxjs';
 
 import { ProjectService } from './project.service';
 import { AuthService } from './auth.service';
@@ -13,9 +19,11 @@ import { Project } from '../models/project.model';
 import { User } from '../models/user.model';
 import { environment } from '../../../environments/environment';
 
+const memberRemoved$ = new Subject<{ boardId: string; userId: string }>();
 const collabStub: Partial<CollaborationService> = {
   remoteEvents$: EMPTY,
   resync$: EMPTY,
+  memberRemoved$: memberRemoved$.asObservable(),
   isLive: () => false,
   emitOp: () => false,
   setActiveBoard: () => undefined,
@@ -177,6 +185,59 @@ describe('ProjectService (DB boards)', () => {
     let projects: Project[] = [];
     service.projects$.subscribe((p) => (projects = p));
     expect(projects.length).toBe(0);
+  });
+
+  it('drops a board and switches away when the owner removes the current user (no DELETE)', () => {
+    const service = createService();
+
+    localStorage.setItem(`scheduler_migrated_${TEST_USER.id}`, 'true');
+    auth.setAuthenticated(true);
+    httpMock.expectOne(boardsUrl).flush([
+      { id: 'b1', name: 'Kept', myRole: 'owner', config: {}, updatedAt: ISO },
+      { id: 'shared', name: 'Shared', myRole: 'viewer', config: {}, updatedAt: ISO },
+    ]);
+    httpMock.expectOne(`${boardsUrl}/b1`).flush(detailDto('b1', 'Kept'));
+
+    // Switch onto the board the owner is about to remove us from.
+    service.switchProject('shared');
+    httpMock
+      .expectOne(`${boardsUrl}/shared`)
+      .flush({ ...detailDto('shared', 'Shared'), myRole: 'viewer' });
+
+    let projects: Project[] = [];
+    let current: Project | null = null;
+    service.projects$.subscribe((p) => (projects = p));
+    service.currentProject$.subscribe((p) => (current = p));
+
+    memberRemoved$.next({ boardId: 'shared', userId: TEST_USER.id });
+
+    // Switching to the remaining board re-fetches its detail (no DELETE issued).
+    httpMock.expectOne(`${boardsUrl}/b1`).flush(detailDto('b1', 'Kept'));
+    httpMock.expectNone(
+      (req) => req.method === 'DELETE' && req.url === `${boardsUrl}/shared`
+    );
+
+    expect(projects.map((p) => p.id)).toEqual(['b1']);
+    expect(current!.id).toBe('b1');
+  });
+
+  it('ignores a removal aimed at a different user', () => {
+    const service = createService();
+
+    localStorage.setItem(`scheduler_migrated_${TEST_USER.id}`, 'true');
+    auth.setAuthenticated(true);
+    httpMock
+      .expectOne(boardsUrl)
+      .flush([{ id: 'b1', name: 'Kept', myRole: 'owner', config: {}, updatedAt: ISO }]);
+    httpMock.expectOne(`${boardsUrl}/b1`).flush(detailDto('b1', 'Kept'));
+
+    let projects: Project[] = [];
+    service.projects$.subscribe((p) => (projects = p));
+
+    memberRemoved$.next({ boardId: 'b1', userId: 'someone-else' });
+
+    expect(projects.map((p) => p.id)).toEqual(['b1']);
+    httpMock.expectNone(() => true);
   });
 
   it('re-emits currentProject$ with the updated name/config on updateProject (anonymous, no reload, no backend calls)', () => {

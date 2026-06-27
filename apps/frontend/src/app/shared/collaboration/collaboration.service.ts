@@ -84,6 +84,10 @@ export class CollaborationService {
   private readonly _connected$ = new BehaviorSubject<boolean>(false);
   private readonly _remoteEvents$ = new Subject<RemoteEvent>();
   private readonly _resync$ = new Subject<string>();
+  private readonly _memberRemoved$ = new Subject<{
+    boardId: string;
+    userId: string;
+  }>();
   private readonly _presence$ = new BehaviorSubject<PresenceMember[]>([]);
   private readonly _cursors$ = new BehaviorSubject<RemoteCursor[]>([]);
 
@@ -92,6 +96,12 @@ export class CollaborationService {
     this._remoteEvents$.asObservable();
   /** Emits a boardId when the caller should re-fetch its authoritative state. */
   readonly resync$: Observable<string> = this._resync$.asObservable();
+  /**
+   * Emits when a board owner removed a collaborator. The removed user's client
+   * uses it to leave the board; everyone else updates their member list.
+   */
+  readonly memberRemoved$: Observable<{ boardId: string; userId: string }> =
+    this._memberRemoved$.asObservable();
   /** Collaborators currently present in the active board's room (incl. self). */
   readonly presence$: Observable<PresenceMember[]> =
     this._presence$.asObservable();
@@ -287,6 +297,19 @@ export class CollaborationService {
         updatedAt: Date.now(),
       });
       this.zone.run(() => this.publishCursors());
+    });
+
+    // A board owner removed a collaborator. Re-enter the zone so consumers
+    // (board access cleanup, member list) re-render under change detection.
+    socket.on('board:member_removed', (...args: unknown[]) => {
+      const payload = args[0] as
+        | { boardId?: string; userId?: string }
+        | undefined;
+      if (!payload?.boardId || !payload?.userId) {
+        return;
+      }
+      const removal = { boardId: payload.boardId, userId: payload.userId };
+      this.zone.run(() => this._memberRemoved$.next(removal));
     });
 
     // Server-side op rejections (e.g. viewer FORBIDDEN) arrive here; they must

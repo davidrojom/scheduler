@@ -1,14 +1,14 @@
 <main class="flex flex-col overflow-x-auto h-dvh touch-pan-x bg-background text-foreground">
   <nav
-    class="h-[80px] flex flex-row justify-between items-center gap-3 w-full bg-card border-b border-border p-3 sticky top-0 left-0 z-50 mb-[16px]"
+    class="h-[80px] flex flex-row justify-between items-center gap-2 w-full bg-card border-b border-border px-2 sm:px-4 sticky top-0 left-0 z-50 mb-[16px]"
   >
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2 min-w-0">
       <button
         hlmBtn
         variant="ghost"
         size="icon"
         (click)="toggleMobileMenu()"
-        class="text-foreground"
+        class="shrink-0 text-foreground"
         aria-label="Toggle menu"
         data-umami-event="toggle-mobile-menu"
       >
@@ -20,15 +20,21 @@
       </button>
 
       @if (canEdit$ | async) {
-      <button hlmBtn (click)="addColumn()" data-umami-event="add-column">
+      <button
+        hlmBtn
+        (click)="addColumn()"
+        class="shrink-0 px-3 md:px-4"
+        aria-label="Add column"
+        data-umami-event="add-column"
+      >
         <i class="ph ph-plus text-lg"></i>
         <span class="hidden md:block">Add Column</span>
       </button>
       }
     </div>
 
-    <div class="flex items-center gap-2">
-      <sch-presence-indicator></sch-presence-indicator>
+    <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+      <sch-presence-indicator class="hidden md:block"></sch-presence-indicator>
 
       <sch-project-switcher></sch-project-switcher>
 
@@ -39,7 +45,7 @@
         variant="ghost"
         size="icon"
         (click)="openSettings()"
-        class="text-foreground"
+        class="shrink-0 text-foreground"
         title="Settings"
         data-umami-event="open-settings"
       >
@@ -228,7 +234,7 @@
           </div>
         </ng-template>
         } @empty {
-        <p class="text-muted-foreground text-center">
+        <p class="text-muted-foreground text-center max-w-[90vw] px-2 sm:max-w-none">
           No columns yet. Click "Add Column" to create one.
         </p>
         }

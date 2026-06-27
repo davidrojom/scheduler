@@ -1,9 +1,9 @@
 <ng-container *ngIf="currentUser$ | async as user; else signInTpl">
-  <div class="relative">
+  <div class="relative shrink-0">
     <button
       type="button"
       (click)="toggleMenu()"
-      class="flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full hover:bg-accent transition-colors cursor-pointer text-foreground"
+      class="flex items-center gap-2 shrink-0 pl-1.5 pr-3 py-1.5 rounded-full hover:bg-accent transition-colors cursor-pointer text-foreground"
       title="Account menu"
       data-umami-event="open-user-menu"
     >
@@ -62,6 +62,7 @@
     hlmBtn
     variant="outline"
     type="button"
+    class="shrink-0 px-3 sm:px-4"
     (click)="login()"
     data-umami-event="sign-in-google"
   >

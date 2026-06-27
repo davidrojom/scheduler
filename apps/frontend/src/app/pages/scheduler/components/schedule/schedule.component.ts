@@ -7,8 +7,6 @@ import {
   input,
   DestroyRef,
   OnInit,
-  ElementRef,
-  AfterViewInit,
 } from '@angular/core';
 import { Subject, distinctUntilChanged, filter, map } from 'rxjs';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -73,7 +71,7 @@ interface Task {
   standalone: true,
   imports: [SharedModule],
 })
-export class ScheduleComponent implements OnInit, AfterViewInit {
+export class ScheduleComponent implements OnInit {
   @ViewChild('modalContent', { static: true })
   modalContent!: TemplateRef<unknown>;
 
@@ -97,19 +95,6 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
 
   activeDayIsOpen = true;
 
-  private longPressTimer: ReturnType<typeof setTimeout> | null = null;
-  private touchStartX = 0;
-  private touchStartY = 0;
-  private touchStartTime = 0;
-  private readonly LONG_PRESS_DELAY = 500; // 500ms
-  private readonly MOVE_THRESHOLD = 10; // 10px
-  private readonly TAP_MAX_DURATION = 500; // 500ms
-  private currentTouchEventId: string | null = null;
-  private currentTouchEvent: TouchEvent | null = null;
-  private currentTouchElement: HTMLElement | null = null;
-  private isDragEnabled = false;
-  private isScrolling = false;
-
   get isMobile(): boolean {
     return this.mobileDetectionService.isMobile;
   }
@@ -119,7 +104,6 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
     private readonly tasksService: TasksService,
     private readonly destroyRef: DestroyRef,
     private readonly mobileDetectionService: MobileDetectionService,
-    private readonly elementRef: ElementRef,
     private readonly projectService: ProjectService,
     private readonly changeDetector: ChangeDetectorRef
   ) {}
@@ -167,12 +151,7 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
               primary: color.primary,
               secondary: color.secondary,
             },
-            // On mobile, events are intentionally NOT draggable: a draggable
-            // event makes angular-calendar attach a non-passive touchmove
-            // listener that preventDefaults (blocking page scroll the moment a
-            // finger lands on a task). Mobile users edit times via the tap
-            // modal instead, so a touch on a task scrolls like empty space.
-            draggable: !this.readOnly() && task.draggable && !this.isMobile,
+            draggable: !this.readOnly() && task.draggable,
             resizable:
               this.readOnly() || this.isMobile
                 ? { beforeStart: false, afterEnd: false }
@@ -187,286 +166,6 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
         // mark this OnPush view dirty so the calendar's [events] input repaints.
         this.changeDetector.markForCheck();
       });
-  }
-
-  ngAfterViewInit(): void {
-    // The custom long-press handlers exist only to enable touch dragging of
-    // events. On mobile that is disabled (see the `draggable` mapping above) so
-    // that touching a task never blocks scrolling — therefore we don't attach
-    // these capture-phase, non-passive touch listeners on mobile at all.
-    if (!this.isMobile) {
-      this.setupLongPressDrag();
-    }
-  }
-
-  private setupLongPressDrag(): void {
-    const element = this.elementRef.nativeElement;
-
-    const boundOnTouchStart = this.onTouchStart.bind(this);
-    const boundOnTouchMove = this.onTouchMove.bind(this);
-    const boundOnTouchEnd = this.onTouchEnd.bind(this);
-    const boundOnTouchCancel = this.onTouchCancel.bind(this);
-
-    element.addEventListener('touchstart', boundOnTouchStart, {
-      passive: false,
-      capture: true,
-    });
-    element.addEventListener('touchmove', boundOnTouchMove, {
-      passive: false,
-      capture: true,
-    });
-    element.addEventListener('touchend', boundOnTouchEnd, {
-      passive: false,
-      capture: true,
-    });
-    element.addEventListener('touchcancel', boundOnTouchCancel, {
-      passive: false,
-      capture: true,
-    });
-  }
-
-  private onTouchStart(event: TouchEvent): void {
-    const target = event.target as HTMLElement;
-    const calEvent = target.closest('.cal-event') as HTMLElement;
-
-    if (!calEvent) {
-      this.isDragEnabled = false;
-      return;
-    }
-
-    if (
-      this.isDragEnabled &&
-      calEvent.getAttribute('data-drag-allowed') === 'true'
-    ) {
-      return;
-    }
-
-    event.stopImmediatePropagation();
-
-    const eventId = this.getEventIdFromElement(calEvent);
-    if (!eventId) {
-      return;
-    }
-
-    const touch = event.touches[0];
-    this.touchStartX = touch.clientX;
-    this.touchStartY = touch.clientY;
-    this.touchStartTime = Date.now();
-    this.currentTouchEventId = eventId;
-    this.currentTouchEvent = event;
-    this.currentTouchElement = calEvent;
-
-    calEvent.classList.add('long-press-waiting');
-
-    this.longPressTimer = setTimeout(() => {
-      calEvent.classList.remove('long-press-waiting');
-      calEvent.classList.add('long-press-active', 'drag-enabled');
-
-      if ('vibrate' in navigator) {
-        navigator.vibrate(50);
-      }
-
-      calEvent.setAttribute('data-drag-allowed', 'true');
-      this.isDragEnabled = true;
-
-      this.longPressTimer = null;
-      this.triggerCalendarDrag(calEvent, event);
-    }, this.LONG_PRESS_DELAY);
-  }
-
-  private onTouchMove(event: TouchEvent): void {
-    const target = event.target as HTMLElement;
-    const calEvent = target.closest('.cal-event') as HTMLElement;
-
-    if (!calEvent) {
-      return;
-    }
-
-    if (this.isScrolling) {
-      return;
-    }
-
-    if (
-      this.isDragEnabled &&
-      calEvent.getAttribute('data-drag-allowed') === 'true'
-    ) {
-      return;
-    }
-
-    if (!event.touches.length) {
-      return;
-    }
-
-    const touch = event.touches[0];
-    const deltaX = Math.abs(touch.clientX - this.touchStartX);
-    const deltaY = Math.abs(touch.clientY - this.touchStartY);
-
-    if (deltaX > this.MOVE_THRESHOLD || deltaY > this.MOVE_THRESHOLD) {
-      this.isScrolling = true;
-
-      if (this.longPressTimer) {
-        this.cancelLongPress();
-        calEvent.classList.remove('long-press-waiting', 'long-press-active');
-        this.currentTouchEventId = null;
-        this.isDragEnabled = false;
-      }
-      return;
-    }
-
-    if (this.longPressTimer) {
-      event.stopImmediatePropagation();
-    }
-  }
-
-  private onTouchEnd(event: TouchEvent): void {
-    const touchDuration = Date.now() - this.touchStartTime;
-
-    if (this.longPressTimer && !this.isDragEnabled) {
-      if (touchDuration < this.TAP_MAX_DURATION) {
-        const lastTouch = event.changedTouches[0];
-        const deltaX = Math.abs(lastTouch.clientX - this.touchStartX);
-        const deltaY = Math.abs(lastTouch.clientY - this.touchStartY);
-
-        if (deltaX < this.MOVE_THRESHOLD && deltaY < this.MOVE_THRESHOLD) {
-          this.cancelLongPress();
-
-          if (this.currentTouchEventId && this.currentTouchElement) {
-            const task = this.tasks.find(
-              (t) => t.id === this.currentTouchEventId
-            );
-            if (task) {
-              this.handleEvent('task', task);
-            }
-          }
-
-          this.cleanupTouchState();
-          return;
-        }
-      }
-
-      const allEvents =
-        this.elementRef.nativeElement.querySelectorAll('.cal-event');
-      allEvents.forEach((calEvent: HTMLElement) => {
-        calEvent.classList.remove('long-press-waiting');
-      });
-      return;
-    }
-
-    this.cleanupTouchState();
-  }
-
-  private cleanupTouchState(): void {
-    const allEvents =
-      this.elementRef.nativeElement.querySelectorAll('.cal-event');
-    allEvents.forEach((calEvent: HTMLElement) => {
-      calEvent.classList.remove(
-        'long-press-waiting',
-        'long-press-active',
-        'drag-enabled'
-      );
-      calEvent.removeAttribute('data-drag-allowed');
-    });
-
-    if (this.longPressTimer) {
-      this.cancelLongPress();
-    }
-
-    this.currentTouchEventId = null;
-    this.currentTouchEvent = null;
-    this.currentTouchElement = null;
-    this.isDragEnabled = false;
-    this.isScrolling = false;
-  }
-
-  private onTouchCancel(): void {
-    this.cleanupTouchState();
-  }
-
-  private triggerCalendarDrag(
-    calEvent: HTMLElement,
-    originalEvent: TouchEvent
-  ): void {
-    const touch = originalEvent.touches[0];
-
-    const newTouch = new Touch({
-      identifier: Date.now(),
-      target: calEvent,
-      clientX: touch.clientX,
-      clientY: touch.clientY,
-      screenX: touch.screenX,
-      screenY: touch.screenY,
-      pageX: touch.pageX,
-      pageY: touch.pageY,
-      radiusX: 2.5,
-      radiusY: 2.5,
-      rotationAngle: 0,
-      force: 0.5,
-    });
-
-    const newTouchEvent = new TouchEvent('touchstart', {
-      cancelable: true,
-      bubbles: true,
-      touches: [newTouch],
-      targetTouches: [newTouch],
-      changedTouches: [newTouch],
-    });
-
-    calEvent.dispatchEvent(newTouchEvent);
-
-    setTimeout(() => {
-      const moveTouch = new Touch({
-        identifier: Date.now(),
-        target: calEvent,
-        clientX: touch.clientX + 1,
-        clientY: touch.clientY + 1,
-        screenX: touch.screenX + 1,
-        screenY: touch.screenY + 1,
-        pageX: touch.pageX + 1,
-        pageY: touch.pageY + 1,
-        radiusX: 2.5,
-        radiusY: 2.5,
-        rotationAngle: 0,
-        force: 0.5,
-      });
-
-      const moveTouchEvent = new TouchEvent('touchmove', {
-        cancelable: true,
-        bubbles: true,
-        touches: [moveTouch],
-        targetTouches: [moveTouch],
-        changedTouches: [moveTouch],
-      });
-
-      calEvent.dispatchEvent(moveTouchEvent);
-    }, 10);
-  }
-
-  private cancelLongPress(): void {
-    if (this.longPressTimer) {
-      clearTimeout(this.longPressTimer);
-      this.longPressTimer = null;
-    }
-  }
-
-  private getEventIdFromElement(element: Element): string | null {
-    const eventElement = element.closest('.cal-event');
-    if (!eventElement) {
-      return null;
-    }
-
-    const textContent = eventElement.textContent?.trim();
-
-    if (textContent) {
-      const matchingTask = this.tasks.find((t) =>
-        textContent.startsWith(t.title)
-      );
-
-      if (matchingTask) {
-        return matchingTask.id;
-      }
-    }
-
-    return null;
   }
 
   private timeRangesOverlap(

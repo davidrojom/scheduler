@@ -46,6 +46,7 @@ import { AuthMenuComponent } from '../../shared/ui/components/auth-menu/auth-men
 import { PresenceIndicatorComponent } from './components/presence-indicator/presence-indicator.component';
 import { CursorOverlayComponent } from './components/cursor-overlay/cursor-overlay.component';
 import { HlmButtonDirective, HlmInputDirective } from '../../shared/ui/spartan';
+import { DragAndDropModule } from 'angular-draggable-droppable';
 
 @Component({
   selector: 'sch-scheduler',
@@ -70,6 +71,7 @@ import { HlmButtonDirective, HlmInputDirective } from '../../shared/ui/spartan';
     CursorOverlayComponent,
     HlmButtonDirective,
     HlmInputDirective,
+    DragAndDropModule,
   ],
 })
 export class SchedulerComponent implements OnInit {

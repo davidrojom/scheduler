@@ -144,10 +144,13 @@ interna** que se usará como `DATABASE_URL` del backend.
 
 ## Riesgos / puntos a verificar
 
-- **Extensión Postgres (`pgcrypto`/`uuid-ossp`):** `apps/backend/scripts/init-db.sql`
-  la crea en dev. Verificar que alguna migración hace
-  `CREATE EXTENSION IF NOT EXISTS …`; si el esquema usa `gen_random_uuid()` y no
-  existe, añadirla a una migración inicial.
+- **Extensión Postgres (`pgcrypto`):** las PKs de todas las tablas usan
+  `gen_random_uuid()`, que requiere `pgcrypto`. Ya cubierto: la migración inicial
+  (`2024-01-01…-initial-schema.ts:4`) ejecuta
+  `create extension if not exists pgcrypto` antes de crear tablas. En el Postgres
+  gestionado de Coolify el usuario es *owner* de la DB y la imagen estándar incluye
+  `pgcrypto`, así que `CREATE EXTENSION` funciona sin pasos manuales. Solo sería un
+  problema con un Postgres externo cuyo usuario no pueda crear extensiones.
 - **SSL de Postgres:** la conexión interna de Coolify va sin SSL; `node-postgres`
   no fuerza SSL salvo `sslmode=require` en la URL, así que la string interna
   funciona tal cual. No añadir `sslmode=require` para la conexión interna.
@@ -156,8 +159,9 @@ interna** que se usará como `DATABASE_URL` del backend.
   cross-subdominio. Opcional endurecer el origin más adelante.
 - **CORS HTTP:** depende de `FRONTEND_URL`; debe ser exactamente
   `https://scheduler.davidrojom.com` (sin barra final).
-- **Rama de despliegue:** Coolify despliega de una rama concreta. Decidir si se
-  fusiona a `main` o se despliega `feat/backend-collaboration-realtime`.
+- **Rama de despliegue:** Coolify desplegará desde `main`. Los archivos de
+  despliegue se han creado en `feat/backend-collaboration-realtime`; queda
+  pendiente fusionar a `main` antes de desplegar (no fusionado todavía).
 - **Healthcheck (opcional):** definir un endpoint/healthcheck para que Coolify
   marque el backend como *healthy* antes de enrutar.
 

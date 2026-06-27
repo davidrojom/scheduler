@@ -1,46 +1,314 @@
-/* You can add global styles to this file, and also import other style files */
+/* Global styles — Spartan UI (spartan.ng) design system */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 /* angular-cli file: src/styles.css */
 /* file path (not a bare specifier) because angular-calendar's "exports" map does not expose ./css */
 @import "../node_modules/angular-calendar/css/angular-calendar.css";
-
-/* Importing Bootstrap SCSS file. */
-@import "bootstrap/scss/bootstrap";
 @import "flatpickr/dist/flatpickr.css";
 @import "@ng-select/ng-select/themes/default.theme.css";
 
-* {
-  box-sizing: border-box;
+/* ===========================================================================
+   Spartan / shadcn design tokens (neutral palette)
+   =========================================================================== */
+@layer base {
+  :root {
+    color-scheme: light;
+
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
-/* ===== Scrollbar CSS ===== */
-/* Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #707070 #ffffff;
+/* ===========================================================================
+   ng-bootstrap modal — restyled to the Spartan dialog look.
+   (Bootstrap CSS is intentionally not imported; these rules provide the
+   structural positioning ng-bootstrap needs plus the Spartan surface.)
+   =========================================================================== */
+ngb-modal-backdrop,
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  width: 100vw;
+  height: 100vh;
+  background-color: hsl(0 0% 0% / 0.5);
 }
 
-/* Chrome, Edge, and Safari */
-*::-webkit-scrollbar {
-  width: 2px;
+ngb-modal-window,
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1055;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  outline: 0;
 }
 
-*::-webkit-scrollbar-track {
-  background: #ffffff;
+.modal-dialog {
+  position: relative;
+  width: auto;
+  margin: 0.75rem;
+  pointer-events: none;
 }
 
-*::-webkit-scrollbar-thumb {
-  background-color: #707070;
-  border-radius: 10px;
-  border: 1px solid #ffffff;
+@media (min-width: 576px) {
+  .modal-dialog {
+    max-width: 500px;
+    margin: 1.75rem auto;
+  }
+  .modal-dialog.modal-lg,
+  .modal-dialog.modal-xl {
+    max-width: 720px;
+  }
+  .modal-dialog.modal-sm {
+    max-width: 360px;
+  }
+}
+
+@media (min-width: 992px) {
+  .modal-dialog.modal-lg,
+  .modal-dialog.modal-xl {
+    max-width: 800px;
+  }
 }
 
 .modal-content {
-  @apply max-h-[90dvh] flex flex-col;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 90dvh;
+  pointer-events: auto;
+  color: hsl(var(--card-foreground));
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 24px 48px -12px hsl(0 0% 0% / 0.18), 0 0 0 1px hsl(0 0% 0% / 0.02);
+  outline: 0;
 }
 
+/* ===========================================================================
+   ng-select — restyled to the Spartan input / popover look
+   =========================================================================== */
+.ng-select .ng-select-container {
+  min-height: 2.5rem;
+  border-radius: var(--radius);
+  border-color: hsl(var(--input));
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.ng-select.ng-select-focused:not(.ng-select-opened) > .ng-select-container,
+.ng-select.ng-select-opened > .ng-select-container {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.35);
+}
+
+.ng-select .ng-select-container .ng-value-container .ng-placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.ng-select.ng-select-multiple .ng-select-container .ng-value-container .ng-value {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.ng-select.ng-select-multiple .ng-value-container .ng-value .ng-value-icon:hover {
+  background-color: hsl(var(--destructive) / 0.15);
+  color: hsl(var(--destructive));
+}
+
+.ng-dropdown-panel {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border-color: hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 12px 24px -8px hsl(0 0% 0% / 0.18);
+}
+
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option {
+  background-color: transparent;
+  color: hsl(var(--popover-foreground));
+}
+
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option.ng-option-marked,
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option.ng-option-selected {
+  background-color: hsl(var(--accent) / 0.6);
+}
+
+/* ===========================================================================
+   flatpickr — restyled to the Spartan popover look
+   =========================================================================== */
+.flatpickr-calendar {
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 12px 24px -8px hsl(0 0% 0% / 0.18);
+}
+
+.flatpickr-calendar.arrowTop::before,
+.flatpickr-calendar.arrowTop::after,
+.flatpickr-calendar.arrowBottom::before,
+.flatpickr-calendar.arrowBottom::after {
+  display: none;
+}
+
+.flatpickr-time input,
+.flatpickr-time .flatpickr-time-separator,
+.flatpickr-time .flatpickr-am-pm {
+  color: hsl(var(--popover-foreground));
+}
+
+.flatpickr-time input:hover,
+.flatpickr-time input:focus,
+.flatpickr-time .flatpickr-am-pm:hover,
+.flatpickr-time .flatpickr-am-pm:focus {
+  background: hsl(var(--accent));
+}
+
+/* ===========================================================================
+   angular-calendar (day view) — aligned with Spartan tokens
+   =========================================================================== */
+.cal-day-view .cal-hour:nth-child(odd) {
+  background-color: hsl(var(--muted) / 0.4);
+}
+
+.cal-day-view .cal-hour {
+  background-color: transparent;
+}
+
+.cal-day-view .cal-time {
+  color: hsl(var(--muted-foreground));
+}
+
+.cal-day-view .cal-hour-segment:hover,
+.cal-day-view .cal-drag-over .cal-hour-segment {
+  background-color: hsl(var(--accent));
+}
+
+.cal-day-view .cal-hour-segment,
+.cal-day-view .cal-time-events,
+.cal-day-view .cal-hour:not(:last-child) .cal-hour-segment,
+.cal-day-view .cal-hour:last-child .cal-hour-segment {
+  border-color: hsl(var(--border));
+}
+
+.cal-event-title {
+  color: inherit;
+}
+
+/* ===========================================================================
+   Scrollbars
+   =========================================================================== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.6);
+}
+
+/* ===========================================================================
+   Mobile touch behaviour (calendar + drag)
+   =========================================================================== */
 @media (max-width: 768px) {
   html,
   body {

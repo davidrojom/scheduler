@@ -13,13 +13,20 @@ import {
   ParticipantStats,
 } from './components/participant-item/participant-item.component';
 import { Task } from './components/task-list-item/task-list-item.component';
+import { HlmButtonDirective, HlmInputDirective } from '../../../../../shared/ui/spartan';
 
 @Component({
   selector: 'sch-participant-stats-modal',
   templateUrl: './participant-stats-modal.component.html',
   styleUrl: './participant-stats-modal.component.scss',
   standalone: true,
-  imports: [ModalHeaderComponent, SharedModule, ParticipantItemComponent],
+  imports: [
+    ModalHeaderComponent,
+    SharedModule,
+    ParticipantItemComponent,
+    HlmButtonDirective,
+    HlmInputDirective,
+  ],
 })
 export class ParticipantStatsModalComponent implements OnInit {
   participantStats: ParticipantStats[] = [];

@@ -1,7 +1,7 @@
 sch-modal-header {
   display: block;
   padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .modal-body {
@@ -12,5 +12,5 @@ sch-modal-header {
 
 .modal-footer {
   padding: 1rem 1.5rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid hsl(var(--border));
 }

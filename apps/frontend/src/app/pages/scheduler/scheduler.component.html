@@ -1,33 +1,33 @@
-<main class="flex flex-col overflow-x-auto h-dvh touch-pan-x">
+<main class="flex flex-col overflow-x-auto h-dvh touch-pan-x bg-background text-foreground">
   <nav
-    class="h-[80px] flex flex-row justify-between items-center gap-3 w-full bg-gray-800 p-3 sticky top-0 left-0 z-50 shadow-lg mb-[16px]"
+    class="h-[80px] flex flex-row justify-between items-center gap-3 w-full bg-card border-b border-border p-3 sticky top-0 left-0 z-50 mb-[16px]"
   >
     <div class="flex items-center gap-3">
       <button
+        hlmBtn
+        variant="ghost"
+        size="icon"
         (click)="toggleMobileMenu()"
-        class="fflex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-700 transition-all cursor-pointer text-white"
+        class="text-foreground"
+        aria-label="Toggle menu"
         data-umami-event="toggle-mobile-menu"
       >
         <i
-          class="ph text-xl text-white"
+          class="ph text-xl"
           [class.ph-list]="!mobileMenuOpen"
           [class.ph-x]="mobileMenuOpen"
         ></i>
       </button>
 
       @if (canEdit$ | async) {
-      <button
-        (click)="addColumn()"
-        class="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer shadow-sm text-white font-medium"
-        data-umami-event="add-column"
-      >
-        <i class="ph ph-plus text-xl"></i>
+      <button hlmBtn (click)="addColumn()" data-umami-event="add-column">
+        <i class="ph ph-plus text-lg"></i>
         <span class="hidden md:block">Add Column</span>
       </button>
       }
     </div>
 
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2">
       <sch-presence-indicator></sch-presence-indicator>
 
       <sch-project-switcher></sch-project-switcher>
@@ -35,8 +35,11 @@
       <sch-share-invite></sch-share-invite>
 
       <button
+        hlmBtn
+        variant="ghost"
+        size="icon"
         (click)="openSettings()"
-        class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-700 transition-all cursor-pointer text-white"
+        class="text-foreground"
         title="Settings"
         data-umami-event="open-settings"
       >
@@ -50,65 +53,77 @@
   @if (mobileMenuOpen) {
   <button
     type="button"
-    class="fixed inset-0 bg-black bg-opacity-10 z-40 w-full cursor-default"
+    class="fixed inset-0 bg-black/20 z-40 w-full cursor-default"
     aria-label="Close menu"
     (click)="closeMobileMenu()"
   ></button>
   <div
-    class="fixed top-[76px] bg-gray-800 p-3 flex flex-col gap-2 shadow-lg max-w-md z-50"
+    class="mobile-menu-content fixed top-[76px] left-3 bg-popover text-popover-foreground border border-border rounded-md p-1.5 flex flex-col gap-1 shadow-md max-w-xs w-56 z-50"
   >
-      @if (canEdit$ | async) {
-      <button
-        (click)="open(wipeConfirmation); closeMobileMenu()"
-        class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 transition-all text-white font-medium shadow-sm"
-        data-umami-event="open-wipe-confirmation"
-      >
-        <i class="ph ph-trash text-xl"></i>
-        <span>Wipe Data</span>
-      </button>
-      }
-      <button
-        (click)="exportAndDownload(); closeMobileMenu()"
-        class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-green-600 hover:bg-green-700 transition-all text-white font-medium shadow-sm"
-        data-umami-event="download-schedule"
-      >
-        <i class="ph ph-file-arrow-down text-xl"></i>
-        <span>Download</span>
-      </button>
-      <button
-        (click)="takeScreenshot(); closeMobileMenu()"
-        class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition-all text-white font-medium shadow-sm"
-        data-umami-event="take-screenshot"
-      >
-        <i class="ph ph-projector-screen text-xl"></i>
-        <span>Screenshot</span>
-      </button>
-      <button
-        (click)="updateExportHash(); open(exportModal); closeMobileMenu()"
-        class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition-all text-white font-medium shadow-sm"
-        data-umami-event="open-share-modal"
-      >
-        <i class="ph ph-share-network text-xl"></i>
-        <span>Share</span>
-      </button>
-      @if (canEdit$ | async) {
-      <button
-        (click)="open(importModal); closeMobileMenu()"
-        class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition-all text-white font-medium shadow-sm"
-        data-umami-event="open-import-modal"
-      >
-        <i class="ph ph-download-simple text-xl"></i>
-        <span>Import</span>
-      </button>
-      }
-      <button
-        (click)="openParticipantStats(); closeMobileMenu()"
-        class="flex flex-row gap-3 items-center px-4 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 transition-all text-white font-medium shadow-sm"
-        data-umami-event="open-participants"
-      >
-        <i class="ph ph-users text-xl"></i>
-        <span>Participants</span>
-      </button>
+    @if (canEdit$ | async) {
+    <button
+      hlmBtn
+      variant="ghost"
+      class="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
+      (click)="open(wipeConfirmation); closeMobileMenu()"
+      data-umami-event="open-wipe-confirmation"
+    >
+      <i class="ph ph-trash text-lg"></i>
+      <span>Wipe Data</span>
+    </button>
+    }
+    <button
+      hlmBtn
+      variant="ghost"
+      class="w-full justify-start"
+      (click)="exportAndDownload(); closeMobileMenu()"
+      data-umami-event="download-schedule"
+    >
+      <i class="ph ph-file-arrow-down text-lg"></i>
+      <span>Download</span>
+    </button>
+    <button
+      hlmBtn
+      variant="ghost"
+      class="w-full justify-start"
+      (click)="takeScreenshot(); closeMobileMenu()"
+      data-umami-event="take-screenshot"
+    >
+      <i class="ph ph-projector-screen text-lg"></i>
+      <span>Screenshot</span>
+    </button>
+    <button
+      hlmBtn
+      variant="ghost"
+      class="w-full justify-start"
+      (click)="updateExportHash(); open(exportModal); closeMobileMenu()"
+      data-umami-event="open-share-modal"
+    >
+      <i class="ph ph-share-network text-lg"></i>
+      <span>Share</span>
+    </button>
+    @if (canEdit$ | async) {
+    <button
+      hlmBtn
+      variant="ghost"
+      class="w-full justify-start"
+      (click)="open(importModal); closeMobileMenu()"
+      data-umami-event="open-import-modal"
+    >
+      <i class="ph ph-download-simple text-lg"></i>
+      <span>Import</span>
+    </button>
+    }
+    <button
+      hlmBtn
+      variant="ghost"
+      class="w-full justify-start"
+      (click)="openParticipantStats(); closeMobileMenu()"
+      data-umami-event="open-participants"
+    >
+      <i class="ph ph-users text-lg"></i>
+      <span>Participants</span>
+    </button>
   </div>
   }
   <div class="mx-3 overflow-x-auto h-full">
@@ -133,7 +148,7 @@
         column.controls.id; let i = $index) {
         <div
           #columnContainer
-          class="flex flex-col divide-y w-[500px] min-w-[500px] select-none"
+          class="flex flex-col w-[500px] min-w-[500px] select-none rounded-lg border border-border bg-card shadow-sm overflow-hidden"
           cdkDrag
           [cdkDragDisabled]="(canEdit$ | async) === false"
           [cdkDragStartDelay]="{
@@ -146,24 +161,26 @@
           (cdkDragEnded)="columnDragEnded(columnContainer)"
         >
           <header
-            class="text-center bg-blue-500 rounded-t-md py-2 font-bold text-xl cursor-grabbing text-white flex flex-row gap-2 items-center justify-between px-4 sticky-column-header"
+            class="bg-primary text-primary-foreground py-2.5 font-semibold cursor-grabbing flex flex-row gap-2 items-center justify-between px-3 sticky-column-header"
             cdkDragHandle
             [formGroupName]="i"
           >
             @if (canEdit$ | async) {
             <button
-              class="grid place-items-center w-[32px] h-[32px] rounded-full cursor-pointer hover:bg-blue-400 transition-all"
+              type="button"
+              class="grid place-items-center w-9 h-9 shrink-0 rounded-md cursor-pointer text-primary-foreground/80 hover:bg-primary-foreground/15 hover:text-primary-foreground transition-colors"
               (click)="open(deleteColumnConfirmation)"
+              aria-label="Delete column"
               data-umami-event="open-delete-column-confirmation"
             >
-              <i class="ph ph-trash"></i>
+              <i class="ph ph-trash text-lg"></i>
             </button>
             }
             <input
               type="text"
               formControlName="title"
               [readonly]="(canEdit$ | async) === false"
-              class="p-2 bg-blue-900 text-center border rounded-md w-[400px]"
+              class="h-9 w-full rounded-md border border-primary-foreground/20 bg-primary-foreground/10 px-3 text-center font-semibold text-primary-foreground placeholder:text-primary-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/40"
             />
           </header>
           <sch-schedule
@@ -173,41 +190,45 @@
           />
         </div>
         <ng-template #deleteColumnConfirmation let-modal>
-          <div class="modal-header">
-            <h4 class="modal-title" id="modal-delete-title">Delete Column</h4>
+          <div class="flex items-center justify-between gap-4 border-b border-border px-6 py-4">
+            <h4 class="text-lg font-semibold tracking-tight" id="modal-delete-title">Delete Column</h4>
             <button
               type="button"
-              class="btn-close"
+              class="grid h-8 w-8 -mr-2 place-content-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
               aria-label="Close"
               (click)="modal.dismiss()"
-            ></button>
+            >
+              <i class="ph ph-x text-lg"></i>
+            </button>
           </div>
-          <div class="modal-body">
-            Do you really want to remove '<b class="font-bold">{{
+          <div class="px-6 py-5 text-sm text-foreground">
+            Do you really want to remove '<b class="font-semibold">{{
               column.controls.title.value
             }}</b
             >' column?
           </div>
-          <div class="modal-footer">
+          <div class="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
             <button
+              hlmBtn
+              variant="outline"
               type="button"
-              class="btn btn-outline-secondary"
+              (click)="modal.dismiss()"
+            >
+              Cancel
+            </button>
+            <button
+              hlmBtn
+              variant="destructive"
+              type="button"
               (click)="removeColumn(column.controls.id.value); modal.close()"
               data-umami-event="delete-column-confirm"
             >
-              Yes
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline-secondary"
-              (click)="modal.dismiss()"
-            >
-              No
+              Delete column
             </button>
           </div>
         </ng-template>
         } @empty {
-        <p class="text-gray-500 text-center">
+        <p class="text-muted-foreground text-center">
           No columns yet. Click "Add Column" to create one.
         </p>
         }
@@ -218,100 +239,97 @@
 </main>
 
 <ng-template #wipeConfirmation let-modal>
-  <div class="modal-header">
-    <h4 class="modal-title" id="modal-wipe-title">Wipe Data</h4>
+  <div class="flex items-center justify-between gap-4 border-b border-border px-6 py-4">
+    <h4 class="text-lg font-semibold tracking-tight" id="modal-wipe-title">Wipe Data</h4>
     <button
       type="button"
-      class="btn-close"
+      class="grid h-8 w-8 -mr-2 place-content-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
       aria-label="Close"
       (click)="modal.dismiss()"
-    ></button>
+    >
+      <i class="ph ph-x text-lg"></i>
+    </button>
   </div>
-  <div class="modal-body">Do you really want to wipe all the data?</div>
-  <div class="modal-footer">
+  <div class="px-6 py-5 text-sm text-foreground">Do you really want to wipe all the data?</div>
+  <div class="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+    <button hlmBtn variant="outline" type="button" (click)="modal.dismiss()">
+      Cancel
+    </button>
     <button
+      hlmBtn
+      variant="destructive"
       type="button"
-      class="btn btn-outline-secondary"
       (click)="wipeData(); modal.close()"
       data-umami-event="wipe-data-confirm"
     >
-      Yes
-    </button>
-    <button
-      type="button"
-      class="btn btn-outline-secondary"
-      (click)="modal.dismiss()"
-    >
-      No
+      Wipe everything
     </button>
   </div>
 </ng-template>
 
 <ng-template #exportModal let-modal>
-  <div class="modal-header">
-    <h4 class="modal-title" id="modal-export-title">Share</h4>
+  <div class="flex items-center justify-between gap-4 border-b border-border px-6 py-4">
+    <h4 class="text-lg font-semibold tracking-tight" id="modal-export-title">Share</h4>
     <button
       type="button"
-      class="btn-close"
+      class="grid h-8 w-8 -mr-2 place-content-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
       aria-label="Close"
       (click)="modal.dismiss()"
-    ></button>
+    >
+      <i class="ph ph-x text-lg"></i>
+    </button>
   </div>
-  <div class="modal-body">
+  <div class="px-6 py-5">
     <button
-      class="flex flex-row items-center gap-2 mx-auto text-white bg-blue-600 rounded-md px-4 py-2"
+      hlmBtn
+      class="mx-auto"
       (click)="copyToClipboard(); modal.dismiss()"
       data-umami-event="copy-share-hash"
     >
-      <i class="ph ph-copy-simple text-xl"></i>
+      <i class="ph ph-copy-simple text-lg"></i>
       <span>Copy hash to clipboard</span>
     </button>
   </div>
-  <div class="modal-footer">
-    <button
-      type="button"
-      class="btn btn-outline-secondary"
-      (click)="modal.dismiss()"
-    >
+  <div class="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+    <button hlmBtn variant="outline" type="button" (click)="modal.dismiss()">
       Close
     </button>
   </div>
 </ng-template>
 
 <ng-template #importModal let-modal>
-  <div class="modal-header">
-    <h4 class="modal-title" id="modal-import-title">Import</h4>
+  <div class="flex items-center justify-between gap-4 border-b border-border px-6 py-4">
+    <h4 class="text-lg font-semibold tracking-tight" id="modal-import-title">Import</h4>
     <button
       type="button"
-      class="btn-close"
+      class="grid h-8 w-8 -mr-2 place-content-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
       aria-label="Close"
       (click)="modal.dismiss()"
-    ></button>
+    >
+      <i class="ph ph-x text-lg"></i>
+    </button>
   </div>
-  <div class="modal-body flex flex-col gap-2">
-    <span>Import schedule</span>
+  <div class="px-6 py-5 flex flex-col gap-2">
+    <label class="text-sm font-medium text-foreground" for="import-hash-field">Import schedule</label>
     <input
+      hlmInput
+      id="import-hash-field"
       type="text"
-      class="border rounded-md px-2 py-1"
       #importField
       placeholder="Enter import hash"
     />
   </div>
-  <div class="modal-footer">
+  <div class="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+    <button hlmBtn variant="outline" type="button" (click)="modal.dismiss()">
+      Cancel
+    </button>
     <button
+      hlmBtn
       type="button"
-      class="btn btn-outline-secondary"
       (click)="import(importField.value); modal.close()"
       data-umami-event="import-schedule"
     >
       Import
-    </button>
-    <button
-      type="button"
-      class="btn btn-outline-secondary"
-      (click)="modal.dismiss()"
-    >
-      Cancel
     </button>
   </div>
 </ng-template>

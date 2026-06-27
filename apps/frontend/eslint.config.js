@@ -25,6 +25,16 @@ module.exports = tseslint.config(
     },
   },
   {
+    // Spartan UI (spartan.ng) helm primitives follow the upstream design-system
+    // conventions: `hlm*` attribute selectors and a `class` input alias. These
+    // intentionally diverge from the app's `sch` prefix / no-input-rename rules.
+    files: ['src/app/shared/ui/spartan/**/*.ts'],
+    rules: {
+      '@angular-eslint/directive-selector': 'off',
+      '@angular-eslint/no-input-rename': 'off',
+    },
+  },
+  {
     files: ['**/*.html'],
     extends: [
       ...angular.configs.templateRecommended,

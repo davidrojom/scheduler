@@ -1,15 +1,22 @@
-<div class="dropdown position-relative">
+<div class="relative">
   <button
-    class="btn btn-outline-light dropdown-toggle"
+    hlmBtn
+    variant="outline"
     type="button"
+    class="max-w-[200px] gap-2"
     (click)="toggleDropdown()"
     data-umami-event="toggle-project-dropdown"
   >
-    {{ (currentProject$ | async)?.name || 'Boards' }}
+    <i class="ph ph-squares-four text-base shrink-0"></i>
+    <span class="truncate">{{ (currentProject$ | async)?.name || 'Boards' }}</span>
+    <i class="ph ph-caret-down text-sm opacity-70 shrink-0"></i>
   </button>
 
-  <div class="dropdown-menu dropdown-menu-end" [class.show]="showDropdown">
-    <h6 class="dropdown-header">Switch Project</h6>
+  @if (showDropdown) {
+  <div class="dropdown-menu">
+    <div class="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+      Switch Project
+    </div>
     <div
       *ngFor="let project of projects$ | async as projects"
       class="dropdown-item-wrapper"
@@ -27,7 +34,7 @@
         </span>
         <button
           *ngIf="canDelete(project, projects)"
-          class="btn btn-sm btn-link text-danger p-0 ms-2 delete-btn"
+          class="delete-btn"
           (click)="deleteProject($event, project.id)"
           title="Delete project"
           data-umami-event="delete-project"
@@ -44,11 +51,17 @@
         </button>
       </button>
     </div>
-    <div class="dropdown-divider"></div>
-    <button class="dropdown-item text-primary" (click)="createNewProject()" data-umami-event="create-new-project">
-      + New Project
+    <div class="my-1 h-px bg-border"></div>
+    <button
+      class="dropdown-item new-project"
+      (click)="createNewProject()"
+      data-umami-event="create-new-project"
+    >
+      <i class="ph ph-plus"></i>
+      <span>New Project</span>
     </button>
   </div>
+  }
 </div>
 
 <button

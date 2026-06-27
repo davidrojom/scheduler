@@ -8,9 +8,9 @@ import { InvitesService } from '../../shared/services/invites.service';
   selector: 'sch-auth-callback',
   standalone: true,
   template: `
-    <div class="flex h-dvh items-center justify-center bg-gray-900 text-white">
+    <div class="flex h-dvh items-center justify-center bg-muted/40 text-foreground">
       <div class="flex flex-col items-center gap-3">
-        <i class="ph ph-circle-notch text-4xl animate-spin"></i>
+        <i class="ph ph-circle-notch text-4xl animate-spin text-muted-foreground"></i>
         <span class="text-lg">Signing you in...</span>
       </div>
     </div>

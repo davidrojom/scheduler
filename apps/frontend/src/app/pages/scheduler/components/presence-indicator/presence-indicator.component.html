@@ -8,7 +8,7 @@
   <div class="flex -space-x-2">
     @for (member of members; track member.userId) {
     <span
-      class="w-8 h-8 rounded-full grid place-items-center text-sm font-bold text-white uppercase ring-2 ring-gray-800"
+      class="w-8 h-8 rounded-full grid place-items-center text-sm font-bold text-white uppercase ring-2 ring-background"
       [style.background-color]="member.color"
       [attr.data-user-id]="member.userId"
       [title]="member.name"
@@ -18,7 +18,7 @@
     }
   </div>
   <span
-    class="hidden md:block text-sm text-gray-200 font-medium ml-1"
+    class="hidden md:block text-sm text-muted-foreground font-medium ml-1"
     data-testid="presence-count"
   >
     {{ members.length }}

@@ -1,18 +1,6 @@
-.dropdown {
-  .btn {
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
-
 .dropdown-backdrop {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   z-index: 1040;
   padding: 0;
   border: 0;
@@ -22,67 +10,85 @@
 
 .dropdown-menu {
   position: absolute;
+  top: calc(100% + 0.5rem);
   right: 0;
   left: auto;
   z-index: 1050;
   max-height: 400px;
-  max-width: 250px;
-  min-width: 200px;
+  max-width: 260px;
+  min-width: 220px;
   overflow-y: auto;
-  background-color: #1f2937;
-  color: white;
-  border: 1px solid #374151;
-}
-
-.dropdown-header {
-  color: #9ca3af;
-}
-
-.dropdown-divider {
-  border-color: #374151;
+  padding: 0.25rem;
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 12px 24px -8px hsl(0 0% 0% / 0.18);
 }
 
 .dropdown-item-wrapper {
   position: relative;
+}
 
-  .dropdown-item {
-    cursor: pointer;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+.dropdown-item {
+  width: 100%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: 0.875rem;
+  color: hsl(var(--popover-foreground));
+  transition: background-color 0.15s, color 0.15s;
+
+  &:hover {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+  }
+
+  &.active {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    font-weight: 500;
+  }
+
+  &.new-project {
+    justify-content: flex-start;
+    font-weight: 500;
+  }
+
+  .project-name-wrapper {
+    flex: 1;
+    min-width: 0;
+    max-width: 180px;
+    overflow: hidden;
+    position: relative;
+    text-align: left;
+  }
+
+  .project-name-scroll {
+    display: inline-block;
+    white-space: nowrap;
+
+    &.long-text {
+      animation: scroll-text 4s linear infinite;
+    }
+  }
+
+  .delete-btn {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    padding: 0.25rem;
+    border-radius: calc(var(--radius) - 4px);
+    color: hsl(var(--muted-foreground));
+    transition: background-color 0.15s, color 0.15s;
 
     &:hover {
-      background-color: #374151;
-      color: white;
-    }
-
-    &.active {
-      background-color: #2563eb;
-      color: white;
-      font-weight: 500;
-    }
-
-    .project-name-wrapper {
-      flex: 1;
-      min-width: 0;
-      max-width: 180px;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .project-name-scroll {
-      display: inline-block;
-      white-space: nowrap;
-
-      &.long-text {
-        animation: scroll-text 4s linear infinite;
-      }
-    }
-
-    .delete-btn {
-      flex-shrink: 0;
+      color: hsl(var(--destructive));
+      background-color: hsl(var(--destructive) / 0.12);
     }
   }
 }
@@ -93,13 +99,5 @@
   }
   100% {
     transform: translateX(calc(-50% - 1.5em));
-  }
-}
-
-.text-primary {
-  color: #60a5fa !important;
-
-  &:hover {
-    color: #93c5fd !important;
   }
 }

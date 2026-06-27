@@ -5,11 +5,12 @@ import { AuthService } from '../../../../shared/services/auth.service';
 import { Project } from '../../../../shared/models/project.model';
 import { Observable } from 'rxjs';
 import { ScrollableTextDirective } from '../../../../shared/directives/scrollable-text.directive';
+import { HlmButtonDirective } from '../../../../shared/ui/spartan';
 
 @Component({
   selector: 'sch-project-switcher',
   standalone: true,
-  imports: [CommonModule, ScrollableTextDirective],
+  imports: [CommonModule, ScrollableTextDirective, HlmButtonDirective],
   templateUrl: './project-switcher.component.html',
   styleUrl: './project-switcher.component.scss'
 })

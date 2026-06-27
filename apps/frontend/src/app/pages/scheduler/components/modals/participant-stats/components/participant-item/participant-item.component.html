@@ -1,5 +1,5 @@
 <div
-  class="bg-gray-50 rounded-lg overflow-hidden cursor-pointer"
+  class="bg-card border border-border rounded-lg overflow-hidden cursor-pointer transition-colors"
   [attr.id]="id"
   role="button"
   tabindex="0"
@@ -26,7 +26,7 @@
         />
       </svg>
       <div class="flex-1 min-w-0 overflow-hidden">
-        <div class="font-medium text-gray-900 participant-name-wrapper">
+        <div class="font-medium text-foreground participant-name-wrapper">
           <span class="participant-name-scroll" schScrollableText>{{ participant.name }}</span>
         </div>
         <div class="participant-info">
@@ -52,7 +52,7 @@
   @if (participant.isExpanded) {
   <div class="participant-expanded">
     @if (participant.tasks.length === 0) {
-    <div class="py-4 text-sm text-gray-500 text-center">No tasks assigned</div>
+    <div class="py-4 text-sm text-muted-foreground text-center">No tasks assigned</div>
     } @else {
     <div class="space-y-2 mt-3">
       @for (task of participant.tasks; track task.id) {

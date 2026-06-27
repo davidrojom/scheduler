@@ -1,83 +1,81 @@
 <div
-  class="flex h-dvh items-center justify-center bg-gray-900 px-4 text-white"
+  class="flex h-dvh items-center justify-center bg-muted/40 px-4 text-foreground"
   [attr.data-join-status]="status"
 >
   <div
-    class="flex w-full max-w-md flex-col items-center gap-4 rounded-2xl bg-gray-800 p-8 text-center shadow-xl"
+    class="flex w-full max-w-md flex-col items-center gap-4 rounded-xl border border-border bg-card p-8 text-center shadow-sm"
   >
     <ng-container [ngSwitch]="status">
       <ng-container *ngSwitchCase="'loading'">
-        <i class="ph ph-circle-notch animate-spin text-4xl"></i>
+        <i class="ph ph-circle-notch animate-spin text-4xl text-muted-foreground"></i>
         <span class="text-lg">Loading invitation...</span>
       </ng-container>
 
       <ng-container *ngSwitchCase="'accepting'">
-        <i class="ph ph-circle-notch animate-spin text-4xl"></i>
+        <i class="ph ph-circle-notch animate-spin text-4xl text-muted-foreground"></i>
         <span class="text-lg">Joining board...</span>
       </ng-container>
 
       <ng-container *ngSwitchCase="'invalid'">
-        <i class="ph ph-warning-circle text-5xl text-red-400"></i>
-        <h1 class="text-xl font-semibold" data-invalid-invite>
+        <i class="ph ph-warning-circle text-5xl text-destructive"></i>
+        <h1 class="text-xl font-semibold tracking-tight" data-invalid-invite>
           Invitation not available
         </h1>
-        <p class="text-gray-300">
+        <p class="text-muted-foreground">
           This invite link is invalid, has been revoked, or no longer exists.
           You have not been granted access to any board.
         </p>
-        <a
-          routerLink="/"
-          class="mt-2 cursor-pointer rounded-lg bg-white px-4 py-2 font-medium text-gray-800 transition-all hover:bg-gray-100"
-        >
+        <a hlmBtn variant="outline" routerLink="/" class="mt-2">
           Go to the scheduler
         </a>
       </ng-container>
 
       <ng-container *ngSwitchDefault>
-        <i class="ph ph-users-three text-5xl text-indigo-300"></i>
-        <h1 class="text-xl font-semibold">You've been invited</h1>
-        <p class="text-gray-300">
+        <i class="ph ph-users-three text-5xl text-foreground"></i>
+        <h1 class="text-xl font-semibold tracking-tight">You've been invited</h1>
+        <p class="text-muted-foreground">
           Join
-          <span class="font-semibold text-white" data-join-board-name>{{
+          <span class="font-semibold text-foreground" data-join-board-name>{{
             boardName
           }}</span>
           as
-          <span class="font-semibold capitalize text-white" data-join-role>{{
+          <span class="font-semibold capitalize text-foreground" data-join-role>{{
             role
           }}</span
           >.
         </p>
 
         <ng-container *ngIf="status === 'login'; else acceptTpl">
-          <p class="text-sm text-gray-400">
+          <p class="text-sm text-muted-foreground">
             Sign in to accept this invitation and open the board.
           </p>
           <button
+            hlmBtn
+            variant="outline"
             type="button"
             (click)="login()"
             data-login-button
-            class="flex items-center gap-2 rounded-lg bg-white px-4 py-2 font-medium text-gray-800 shadow-sm transition-all hover:bg-gray-100"
             data-umami-event="join-sign-in"
           >
-            <i class="ph ph-google-logo text-xl"></i>
+            <i class="ph ph-google-logo text-lg"></i>
             <span>Sign in with Google</span>
           </button>
         </ng-container>
 
         <ng-template #acceptTpl>
           <button
+            hlmBtn
             type="button"
             (click)="accept()"
             data-accept-button
-            class="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 font-medium text-white shadow-sm transition-all hover:bg-indigo-700"
             data-umami-event="accept-invite"
           >
-            <i class="ph ph-check text-xl"></i>
+            <i class="ph ph-check text-lg"></i>
             <span>Accept invitation</span>
           </button>
         </ng-template>
 
-        <p *ngIf="errorMessage" class="text-sm text-red-400">
+        <p *ngIf="errorMessage" class="text-sm text-destructive">
           {{ errorMessage }}
         </p>
       </ng-container>

@@ -1,10 +1,14 @@
-<header class="flex flex-row justify-between items-center">
-  <h2 class="text-xl">{{ title() }}</h2>
+<header class="flex flex-row items-center justify-between gap-4">
+  <h2 class="text-lg font-semibold tracking-tight text-foreground">{{ title() }}</h2>
   <button
-    class="grid place-content-center text-xl font-bold self-start"
+    hlmBtn
+    variant="ghost"
+    size="icon"
+    class="-mr-2 h-8 w-8 shrink-0 text-muted-foreground"
     (click)="close.emit()"
+    aria-label="Close"
     data-umami-event="close-modal"
   >
-    <i class="ph ph-x"></i>
+    <i class="ph ph-x text-lg"></i>
   </button>
 </header>

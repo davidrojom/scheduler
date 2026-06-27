@@ -8,13 +8,14 @@ import {
   InvitesService,
 } from '../../shared/services/invites.service';
 import { ProjectService } from '../../shared/services/project.service';
+import { HlmButtonDirective } from '../../shared/ui/spartan';
 
 type JoinStatus = 'loading' | 'login' | 'ready' | 'accepting' | 'invalid';
 
 @Component({
   selector: 'sch-join',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, HlmButtonDirective],
   templateUrl: './join.component.html',
 })
 export class JoinComponent implements OnInit {

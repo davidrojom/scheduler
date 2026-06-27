@@ -1,33 +1,36 @@
 <ng-container *ngIf="canShare$ | async">
   <button
+    hlmBtn
+    variant="outline"
     type="button"
     (click)="open(shareModal)"
-    class="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 transition-all cursor-pointer shadow-sm text-white font-medium"
     title="Share / Invite"
     aria-label="Share / Invite"
     data-umami-event="open-share-invite"
   >
-    <i class="ph ph-user-plus text-xl"></i>
+    <i class="ph ph-user-plus text-lg"></i>
     <span class="hidden md:block">Invite</span>
   </button>
 </ng-container>
 
 <ng-template #shareModal let-modal>
-  <div class="modal-header">
-    <h4 class="modal-title" id="share-invite-modal">Share / Invite</h4>
+  <div class="flex items-center justify-between gap-4 border-b border-border px-6 py-4">
+    <h4 class="text-lg font-semibold tracking-tight" id="share-invite-modal">Share / Invite</h4>
     <button
       type="button"
-      class="btn-close"
+      class="grid h-8 w-8 -mr-2 place-content-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
       aria-label="Close"
       (click)="modal.dismiss()"
-    ></button>
+    >
+      <i class="ph ph-x text-lg"></i>
+    </button>
   </div>
-  <div class="modal-body flex flex-col gap-3">
-    <label class="flex flex-col gap-1" for="invite-role-select">
-      <span class="font-medium">Role</span>
+  <div class="px-6 py-5 flex flex-col gap-4">
+    <div class="flex flex-col gap-2">
+      <label hlmLabel for="invite-role-select">Role</label>
       <select
+        hlmInput
         id="invite-role-select"
-        class="border rounded-md px-2 py-1"
         [(ngModel)]="role"
         aria-label="Invite role"
         data-umami-event="select-invite-role"
@@ -36,47 +39,44 @@
           {{ option | titlecase }}
         </option>
       </select>
-    </label>
+    </div>
 
     <button
+      hlmBtn
       type="button"
-      class="flex flex-row items-center justify-center gap-2 text-white bg-blue-600 rounded-md px-4 py-2 disabled:opacity-60"
       [disabled]="generating"
       (click)="generate()"
       data-umami-event="generate-invite-link"
     >
-      <i class="ph ph-link text-xl"></i>
+      <i class="ph ph-link text-lg"></i>
       <span>{{ generating ? 'Generating...' : 'Generate link' }}</span>
     </button>
 
     <div *ngIf="inviteUrl as url" class="flex flex-col gap-2">
       <input
+        hlmInput
         type="text"
-        class="border rounded-md px-2 py-1 w-full"
         [value]="url"
         readonly
         aria-label="Invite link"
         data-invite-url
       />
       <button
+        hlmBtn
+        variant="secondary"
         type="button"
-        class="flex flex-row items-center justify-center gap-2 text-white bg-green-600 rounded-md px-4 py-2"
         (click)="copy()"
         data-umami-event="copy-invite-link"
       >
-        <i class="ph ph-copy-simple text-xl"></i>
+        <i class="ph ph-copy-simple text-lg"></i>
         <span>{{ copied ? 'Copied!' : 'Copy link' }}</span>
       </button>
     </div>
 
-    <p *ngIf="errorMessage" class="text-red-600 text-sm">{{ errorMessage }}</p>
+    <p *ngIf="errorMessage" class="text-sm text-destructive">{{ errorMessage }}</p>
   </div>
-  <div class="modal-footer">
-    <button
-      type="button"
-      class="btn btn-outline-secondary"
-      (click)="modal.dismiss()"
-    >
+  <div class="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+    <button hlmBtn variant="outline" type="button" (click)="modal.dismiss()">
       Close
     </button>
   </div>

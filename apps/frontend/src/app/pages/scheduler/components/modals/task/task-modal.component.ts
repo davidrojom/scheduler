@@ -11,6 +11,11 @@ import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { SharedModule } from '../../../../../shared/shared.module';
 import { NgSelectModule } from '@ng-select/ng-select';
 import {
+  HlmButtonDirective,
+  HlmInputDirective,
+  HlmLabelDirective,
+} from '../../../../../shared/ui/spartan';
+import {
   addMinutes,
   differenceInMinutes,
   getHours,
@@ -37,7 +42,14 @@ type ParticipantSelection = string | { name: string };
   templateUrl: './task-modal.component.html',
   styleUrl: './task-modal.component.scss',
   standalone: true,
-  imports: [ModalHeaderComponent, SharedModule, NgSelectModule],
+  imports: [
+    ModalHeaderComponent,
+    SharedModule,
+    NgSelectModule,
+    HlmButtonDirective,
+    HlmInputDirective,
+    HlmLabelDirective,
+  ],
 })
 export class TaskModalComponent implements OnInit {
   @ViewChild('title', {

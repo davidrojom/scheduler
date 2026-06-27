@@ -3,7 +3,7 @@
     <button
       type="button"
       (click)="toggleMenu()"
-      class="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full hover:bg-gray-700 transition-all cursor-pointer text-white"
+      class="flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full hover:bg-accent transition-colors cursor-pointer text-foreground"
       title="Account menu"
       data-umami-event="open-user-menu"
     >
@@ -15,33 +15,34 @@
       />
       <span
         *ngIf="!user.avatarUrl"
-        class="w-8 h-8 rounded-full bg-blue-600 grid place-items-center font-bold uppercase"
+        class="w-8 h-8 rounded-full bg-primary text-primary-foreground grid place-items-center font-semibold uppercase"
       >
         {{ initial(user) }}
       </span>
-      <span class="hidden md:block max-w-[160px] truncate">{{
+      <span class="hidden md:block max-w-[160px] truncate text-sm font-medium">{{
         user.name || user.email
       }}</span>
-      <i class="ph ph-caret-down"></i>
+      <i class="ph ph-caret-down text-muted-foreground"></i>
     </button>
 
     <div
       *ngIf="menuOpen"
-      class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg z-50 overflow-hidden"
+      class="absolute right-0 mt-2 w-56 bg-popover text-popover-foreground border border-border rounded-md shadow-md z-50 overflow-hidden p-1"
     >
-      <div class="px-4 py-3 border-b">
-        <p class="font-semibold text-gray-900 truncate">
+      <div class="px-3 py-2.5">
+        <p class="font-semibold text-foreground truncate">
           {{ user.name || 'Account' }}
         </p>
-        <p class="text-sm text-gray-500 truncate">{{ user.email }}</p>
+        <p class="text-sm text-muted-foreground truncate">{{ user.email }}</p>
       </div>
+      <div class="my-1 h-px bg-border"></div>
       <button
         type="button"
         (click)="logout()"
-        class="w-full flex items-center gap-2 px-4 py-3 text-left text-gray-700 hover:bg-gray-100 transition-all cursor-pointer"
+        class="w-full flex items-center gap-2 px-3 py-2 rounded-sm text-left text-sm text-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
         data-umami-event="logout"
       >
-        <i class="ph ph-sign-out text-lg"></i>
+        <i class="ph ph-sign-out text-base"></i>
         <span>Logout</span>
       </button>
     </div>
@@ -58,12 +59,13 @@
 
 <ng-template #signInTpl>
   <button
+    hlmBtn
+    variant="outline"
     type="button"
     (click)="login()"
-    class="flex items-center gap-2 px-4 py-2 rounded-lg bg-white hover:bg-gray-100 transition-all cursor-pointer shadow-sm text-gray-800 font-medium"
     data-umami-event="sign-in-google"
   >
-    <i class="ph ph-google-logo text-xl"></i>
+    <i class="ph ph-google-logo text-lg"></i>
     <span class="hidden sm:block">Sign in with Google</span>
     <span class="sm:hidden">Sign in</span>
   </button>

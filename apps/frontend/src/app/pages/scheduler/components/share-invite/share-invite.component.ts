@@ -10,11 +10,22 @@ import {
   InviteRole,
   InvitesService,
 } from '../../../../shared/services/invites.service';
+import {
+  HlmButtonDirective,
+  HlmInputDirective,
+  HlmLabelDirective,
+} from '../../../../shared/ui/spartan';
 
 @Component({
   selector: 'sch-share-invite',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    HlmButtonDirective,
+    HlmInputDirective,
+    HlmLabelDirective,
+  ],
   templateUrl: './share-invite.component.html',
 })
 export class ShareInviteComponent {

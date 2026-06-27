@@ -1,19 +1,22 @@
 <div class="h-[90dvh] flex flex-col">
-  <div class="p-4">
+  <div class="p-6 pb-4">
     <sch-modal-header [title]="modalTitle" (close)="close()"></sch-modal-header>
   </div>
 
-  <div class="overflow-y-auto flex-1 min-h-0 px-4 pb-4 overflow-y-auto">
-    <div *ngIf="readOnly" class="alert alert-info" role="alert">
-      You have view-only access to this board. Settings cannot be changed.
+  <div class="overflow-y-auto flex-1 min-h-0 px-6 pb-4">
+    <div *ngIf="readOnly" hlmAlert class="mb-4 bg-muted/40">
+      <i class="ph ph-eye text-base"></i>
+      <p hlmAlertDescription>
+        You have view-only access to this board. Settings cannot be changed.
+      </p>
     </div>
-    <form [formGroup]="settingsForm" *ngIf="settingsForm">
-      <div class="mb-4">
-        <label for="name" class="form-label fw-bold">Project Name</label>
+    <form [formGroup]="settingsForm" *ngIf="settingsForm" class="space-y-5">
+      <div>
+        <label hlmLabel for="name" class="mb-2 block">Project Name</label>
         <input
+          hlmInput
           type="text"
           id="name"
-          class="form-control"
           formControlName="name"
           placeholder="Enter project name"
         />
@@ -22,42 +25,45 @@
             settingsForm.get('name')?.invalid &&
             settingsForm.get('name')?.touched
           "
-          class="text-danger mt-1 small"
+          class="mt-1.5 text-sm text-destructive"
         >
           Project name is required
         </div>
       </div>
 
-      <div class="mb-4">
-        <label for="logoInput" class="form-label fw-bold">Logo (Optional)</label>
-        <div class="d-flex flex-column gap-2" *ngIf="!readOnly">
+      <div>
+        <label hlmLabel for="logoInput" class="mb-2 block">Logo (Optional)</label>
+        <div class="flex flex-col gap-2" *ngIf="!readOnly">
           <input
+            hlmInput
             type="file"
             id="logoInput"
-            class="form-control"
+            class="h-auto py-2 file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1 file:text-sm file:font-medium hover:file:bg-accent"
             accept=".svg,image/svg+xml"
             (change)="onLogoFileSelected($event)"
             #logoInput
             data-umami-event="upload-logo"
           />
-          <small class="text-muted"
+          <small class="text-sm text-muted-foreground"
             >Upload an SVG file to display in exported PDFs</small
           >
         </div>
 
         @if (hasLogo) {
-        <div class="mt-3 p-3 border rounded">
-          <span class="form-label fw-bold">Current Logo</span>
+        <div class="mt-3 rounded-md border border-border p-3">
+          <span class="text-sm font-medium text-foreground">Current Logo</span>
           <div
-            class="d-flex justify-content-center align-items-center mb-2"
+            class="mb-2 mt-2 flex items-center justify-center"
             style="max-height: 100px"
           >
             <div [innerHTML]="logoPreview"></div>
           </div>
           <button
+            hlmBtn
+            variant="destructive"
+            size="sm"
             *ngIf="!readOnly"
             type="button"
-            class="btn btn-danger btn-sm"
             (click)="removeLogo()"
             data-umami-event="remove-logo"
           >
@@ -65,23 +71,23 @@
           </button>
         </div>
         } @else {
-        <div class="mt-2 text-muted small">
+        <div class="mt-2 text-sm text-muted-foreground">
           No logo uploaded. PDFs will be generated without a logo.
         </div>
         }
       </div>
 
-      <hr class="my-4" />
+      <div hlmSeparator class="my-5"></div>
 
-      <h6 class="fw-bold mb-3">Schedule Configuration</h6>
+      <h3 class="mb-3 text-sm font-semibold text-foreground">Schedule Configuration</h3>
 
-      <div class="row mb-3">
-        <div class="col-md-6">
-          <label for="dayStartHour" class="form-label">Day Start Hour</label>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label hlmLabel for="dayStartHour" class="mb-2 block">Day Start Hour</label>
           <input
+            hlmInput
             type="number"
             id="dayStartHour"
-            class="form-control"
             formControlName="dayStartHour"
             min="0"
             max="23"
@@ -91,18 +97,18 @@
               settingsForm.get('dayStartHour')?.invalid &&
               settingsForm.get('dayStartHour')?.touched
             "
-            class="text-danger mt-1 small"
+            class="mt-1.5 text-sm text-destructive"
           >
             Must be between 0 and 23
           </div>
         </div>
 
-        <div class="col-md-6">
-          <label for="dayEndHour" class="form-label">Day End Hour</label>
+        <div>
+          <label hlmLabel for="dayEndHour" class="mb-2 block">Day End Hour</label>
           <input
+            hlmInput
             type="number"
             id="dayEndHour"
-            class="form-control"
             formControlName="dayEndHour"
             min="1"
             max="24"
@@ -112,24 +118,24 @@
               settingsForm.get('dayEndHour')?.invalid &&
               settingsForm.get('dayEndHour')?.touched
             "
-            class="text-danger mt-1 small"
+            class="mt-1.5 text-sm text-destructive"
           >
             Must be between 1 and 24
           </div>
         </div>
       </div>
 
-      <div class="mb-3">
-        <label for="segmentsByHour" class="form-label">Segments Per Hour</label>
+      <div>
+        <label hlmLabel for="segmentsByHour" class="mb-2 block">Segments Per Hour</label>
         <input
+          hlmInput
           type="number"
           id="segmentsByHour"
-          class="form-control"
           formControlName="segmentsByHour"
           min="1"
           max="12"
         />
-        <small class="text-muted">
+        <small class="mt-1.5 block text-sm text-muted-foreground">
           Each segment = {{ minutesPerSegment }} minutes (e.g., 6 segments = 10
           min intervals)
         </small>
@@ -138,27 +144,30 @@
             settingsForm.get('segmentsByHour')?.invalid &&
             settingsForm.get('segmentsByHour')?.touched
           "
-          class="text-danger mt-1 small"
+          class="mt-1.5 text-sm text-destructive"
         >
           Must be between 1 and 12
         </div>
       </div>
 
-      <div *ngIf="!readOnly" class="alert alert-info" role="alert">
-        <strong>Note:</strong> Saving applies schedule configuration changes to
-        the grid immediately, no page reload required.
+      <div *ngIf="!readOnly" hlmAlert class="bg-muted/40">
+        <i class="ph ph-info text-base"></i>
+        <p hlmAlertDescription>
+          <strong class="font-medium text-foreground">Note:</strong> Saving applies schedule
+          configuration changes to the grid immediately, no page reload required.
+        </p>
       </div>
     </form>
   </div>
 
-  <div class="flex-shrink-0 flex justify-end gap-2 p-4 border-t">
-    <button type="button" class="btn btn-secondary" (click)="close()">
+  <div class="flex flex-shrink-0 justify-end gap-2 border-t border-border p-6 py-4">
+    <button hlmBtn variant="outline" type="button" (click)="close()">
       Cancel
     </button>
     <button
+      hlmBtn
       *ngIf="!readOnly"
       type="button"
-      class="btn btn-primary"
       (click)="save()"
       [disabled]="settingsForm.invalid"
       data-umami-event="save-settings"

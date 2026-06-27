@@ -1,24 +1,24 @@
-<section class="flex flex-col gap-2 p-4 min-h-dvh">
+<section class="flex flex-col gap-4 p-6 min-h-dvh">
   <sch-modal-header [title]="modalTitle" (close)="closeModal()" />
   <form
     [formGroup]="form"
     (submit)="save()"
     class="flex flex-col gap-6 justify-between"
   >
-    <div class="grid grid-cols-[100px_1fr] gap-2 items-center">
-      <label for="title" class="text-gray-400">Title</label>
+    <div class="grid grid-cols-[100px_1fr] gap-x-3 gap-y-3 items-center">
+      <label hlmLabel for="title">Title</label>
       <input
         #title
+        hlmInput
         id="title"
-        class="border border-gray-400 rounded-md w-full p-1"
         type="text"
         formControlName="title"
       />
 
-      <label for="start" class="text-gray-400">Start</label>
+      <label hlmLabel for="start">Start</label>
       <input
+        hlmInput
         id="start"
-        class="form-control"
         type="text"
         mwlFlatpickr
         formControlName="start"
@@ -30,9 +30,9 @@
         [minuteIncrement]="60 / segmentsPerHour"
       />
 
-      <label for="end" class="text-gray-400">End</label>
+      <label hlmLabel for="end">End</label>
       <input
-        class="form-control"
+        hlmInput
         id="end"
         type="text"
         mwlFlatpickr
@@ -45,7 +45,7 @@
         [time24hr]="true"
       />
 
-      <label for="participants" class="text-gray-400">Participants</label>
+      <label hlmLabel for="participants" class="self-start pt-2.5">Participants</label>
       <ng-select
         id="participants"
         [items]="participantsWithConflictInfo"
@@ -63,8 +63,8 @@
       >
         <ng-template ng-option-tmp let-item="item" let-search="searchTerm">
           <div
-            [style.color]="item.isConflicted ? 'red' : 'black'"
-            [style.font-weight]="item.isConflicted ? 'bold' : 'normal'"
+            [class.text-destructive]="item.isConflicted"
+            [class.font-semibold]="item.isConflicted"
           >
             {{ item.isConflicted ? "⚠️ " : "" }}{{ item.name }}
           </div>
@@ -72,16 +72,8 @@
         <ng-template ng-label-tmp let-item="item" let-clear="clear">
           <span
             class="ng-value-label"
-            [style.color]="
-              isParticipantConflicted(getParticipantName(item))
-                ? 'red'
-                : 'black'
-            "
-            [style.font-weight]="
-              isParticipantConflicted(getParticipantName(item))
-                ? 'bold'
-                : 'normal'
-            "
+            [class.text-destructive]="isParticipantConflicted(getParticipantName(item))"
+            [class.font-semibold]="isParticipantConflicted(getParticipantName(item))"
           >
             {{ isParticipantConflicted(getParticipantName(item)) ? "⚠️ " : ""
             }}{{ getParticipantName(item) }}
@@ -92,10 +84,13 @@
     </div>
 
     @if (!readOnly) {
-    <footer class="flex flex-row gap-2 items-center justify-between">
+    <footer class="flex flex-row gap-2 items-center justify-end">
       @if (modalData.type==='edit') {
       <button
-        class="bg-red-400 text-white rounded-md px-4 py-2 mx-auto"
+        hlmBtn
+        variant="destructive"
+        type="button"
+        class="mr-auto"
         (click)="deleteTask(modalData.task.id)"
         data-umami-event="delete-task"
       >
@@ -103,13 +98,8 @@
       </button>
       }
       <button
+        hlmBtn
         type="submit"
-        class="text-white rounded-md px-4 py-2 mx-auto"
-        [ngClass]="{
-          'bg-blue-300': !form.valid,
-          'cursor-not-allowed': !form.valid,
-          'bg-blue-600': form.valid
-        }"
         [disabled]="!form.valid"
         data-umami-event="save-task"
       >

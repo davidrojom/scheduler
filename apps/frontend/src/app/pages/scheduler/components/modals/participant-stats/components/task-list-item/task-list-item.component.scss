@@ -1,8 +1,8 @@
 .task-item {
   padding: 0.75rem;
-  background-color: white;
-  border-radius: 0.25rem;
-  border: 1px solid #e5e7eb;
+  background-color: hsl(var(--background));
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid hsl(var(--border));
   display: flex;
   align-items: start;
   justify-content: space-between;
@@ -21,7 +21,7 @@
 
 .task-title {
   font-weight: 500;
-  color: #111827;
+  color: hsl(var(--foreground));
   margin-bottom: 0.25rem;
 
   @media (max-width: 640px) {
@@ -34,7 +34,7 @@
   align-items: center;
   gap: 1rem;
   font-size: 0.875rem;
-  color: #4b5563;
+  color: hsl(var(--muted-foreground));
   flex-wrap: wrap;
 
   @media (max-width: 640px) {
@@ -65,22 +65,23 @@
 }
 
 .task-duration {
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
 }
 
 .task-remove-button {
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
   font-weight: 500;
-  color: #dc2626;
-  border: 1px solid #dc2626;
-  border-radius: 0.25rem;
+  color: hsl(var(--destructive));
+  border: 1px solid hsl(var(--destructive) / 0.5);
+  border-radius: calc(var(--radius) - 2px);
   transition: all 0.15s;
   flex-shrink: 0;
 
   &:hover {
-    color: white;
-    background-color: #dc2626;
+    color: hsl(var(--destructive-foreground));
+    background-color: hsl(var(--destructive));
+    border-color: hsl(var(--destructive));
   }
 
   @media (max-width: 640px) {

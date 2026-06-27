@@ -44,6 +44,7 @@ import { ShareInviteComponent } from './components/share-invite/share-invite.com
 import { AuthMenuComponent } from '../../shared/ui/components/auth-menu/auth-menu.component';
 import { PresenceIndicatorComponent } from './components/presence-indicator/presence-indicator.component';
 import { CursorOverlayComponent } from './components/cursor-overlay/cursor-overlay.component';
+import { HlmButtonDirective, HlmInputDirective } from '../../shared/ui/spartan';
 
 @Component({
   selector: 'sch-scheduler',
@@ -65,6 +66,8 @@ import { CursorOverlayComponent } from './components/cursor-overlay/cursor-overl
     AuthMenuComponent,
     PresenceIndicatorComponent,
     CursorOverlayComponent,
+    HlmButtonDirective,
+    HlmInputDirective,
   ],
 })
 export class SchedulerComponent implements OnInit {

@@ -11,11 +11,29 @@ import { ProjectService } from '../../../../../shared/services/project.service';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import DOMPurify from 'dompurify';
+import {
+  HlmButtonDirective,
+  HlmInputDirective,
+  HlmLabelDirective,
+  HlmAlertDirective,
+  HlmAlertDescriptionDirective,
+  HlmSeparatorDirective,
+} from '../../../../../shared/ui/spartan';
 
 @Component({
   selector: 'sch-settings',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ModalHeaderComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    ModalHeaderComponent,
+    HlmButtonDirective,
+    HlmInputDirective,
+    HlmLabelDirective,
+    HlmAlertDirective,
+    HlmAlertDescriptionDirective,
+    HlmSeparatorDirective,
+  ],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss',
 })

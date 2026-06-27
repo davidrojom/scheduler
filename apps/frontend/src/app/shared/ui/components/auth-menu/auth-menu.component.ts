@@ -4,11 +4,12 @@ import { Observable } from 'rxjs';
 
 import { AuthService } from '../../../services/auth.service';
 import { User } from '../../../models/user.model';
+import { HlmButtonDirective } from '../../spartan';
 
 @Component({
   selector: 'sch-auth-menu',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, HlmButtonDirective],
   templateUrl: './auth-menu.component.html',
 })
 export class AuthMenuComponent {

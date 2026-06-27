@@ -5,7 +5,7 @@
 
 <div class="modal-body">
   @if (participantStats.length === 0) {
-    <div class="text-center text-gray-500 py-8">
+    <div class="text-center text-muted-foreground py-8">
       <p>No participants found.</p>
     </div>
   } @else {
@@ -24,20 +24,20 @@
   }
 </div>
 
-<div class="modal-footer flex justify-between items-center">
+<div class="modal-footer flex justify-between items-center gap-2">
   @if (canEdit) {
   <div class="flex gap-2 items-center flex-1">
     <input
+      hlmInput
       #newParticipantInput
       type="text"
-      class="form-control"
       placeholder="Add new participant..."
       [(ngModel)]="newParticipantName"
       (keyup.enter)="addParticipant()"
     />
     <button
+      hlmBtn
       type="button"
-      class="btn btn-primary"
       (click)="addParticipant()"
       [disabled]="!newParticipantName.trim()"
       data-umami-event="add-participant"
@@ -46,11 +46,7 @@
     </button>
   </div>
   }
-  <button
-    type="button"
-    class="btn btn-secondary"
-    (click)="close()"
-  >
+  <button hlmBtn variant="outline" type="button" (click)="close()">
     Close
   </button>
 </div>

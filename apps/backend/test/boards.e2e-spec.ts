@@ -269,6 +269,105 @@ describe('Boards (e2e)', () => {
     });
   });
 
+  describe('board members endpoints', () => {
+    let boardId: string;
+
+    beforeEach(async () => {
+      boardId = randomUUID();
+      await request(httpServer)
+        .post('/api/boards')
+        .set('Authorization', bearer(aliceToken))
+        .send({ id: boardId, name: 'Team', config })
+        .expect(201);
+      await db
+        .insertInto('board_members')
+        .values({ board_id: boardId, user_id: bobId, role: 'editor' })
+        .execute();
+    });
+
+    it('GET /:id/members lists collaborators for any member', async () => {
+      const res = await request(httpServer)
+        .get(`/api/boards/${boardId}/members`)
+        .set('Authorization', bearer(bobToken))
+        .expect(200);
+
+      const members = res.body as { userId: string; role: string }[];
+      expect(members).toHaveLength(2);
+      expect(members).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ userId: aliceId, role: 'owner' }),
+          expect.objectContaining({ userId: bobId, role: 'editor' }),
+        ]),
+      );
+    });
+
+    it('GET /:id/members is forbidden to a non-member (no leak)', async () => {
+      const charlie = await users.upsertByEmail({ email: 'charlie@x.com' });
+      const charlieToken = await auth.login(charlie);
+      const res = await request(httpServer)
+        .get(`/api/boards/${boardId}/members`)
+        .set('Authorization', bearer(charlieToken));
+      expect([403, 404]).toContain(res.status);
+    });
+
+    it('lets the owner remove a collaborator (200), dropping their access', async () => {
+      const del = await request(httpServer)
+        .delete(`/api/boards/${boardId}/members/${bobId}`)
+        .set('Authorization', bearer(aliceToken));
+      expect([200, 204]).toContain(del.status);
+
+      const members = await request(httpServer)
+        .get(`/api/boards/${boardId}/members`)
+        .set('Authorization', bearer(aliceToken))
+        .expect(200);
+      expect((members.body as { userId: string }[]).map((m) => m.userId)).toEqual(
+        [aliceId],
+      );
+
+      // The removed user can no longer read the board.
+      await request(httpServer)
+        .get(`/api/boards/${boardId}`)
+        .set('Authorization', bearer(bobToken))
+        .expect(404);
+    });
+
+    it('forbids a non-owner from removing members', async () => {
+      await request(httpServer)
+        .delete(`/api/boards/${boardId}/members/${aliceId}`)
+        .set('Authorization', bearer(bobToken))
+        .expect(403);
+    });
+
+    it('refuses to remove the owner (403) and keeps the membership', async () => {
+      await request(httpServer)
+        .delete(`/api/boards/${boardId}/members/${aliceId}`)
+        .set('Authorization', bearer(aliceToken))
+        .expect(403);
+      expect(await boardsHasMember(boardId, aliceId)).toBe(true);
+    });
+
+    it('returns 404 when removing a user who is not a member', async () => {
+      const charlie = await users.upsertByEmail({ email: 'charlie2@x.com' });
+      await request(httpServer)
+        .delete(`/api/boards/${boardId}/members/${charlie.id}`)
+        .set('Authorization', bearer(aliceToken))
+        .expect(404);
+    });
+  });
+
+  async function boardsHasMember(
+    board: string,
+    userId: string,
+  ): Promise<boolean> {
+    const row = await db
+      .selectFrom('board_members')
+      .select('user_id')
+      .where('board_id', '=', board)
+      .where('user_id', '=', userId)
+      .executeTakeFirst();
+    return !!row;
+  }
+
   // VAL-AUTH-018 (boards portion): a board created with one token for a user is
   // visible via a second token minted for the same email.
   describe('persistent identity across impersonations', () => {

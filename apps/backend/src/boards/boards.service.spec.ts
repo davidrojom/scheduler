@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Database } from '../database/database.module';
 import {
   createTestDatabase,
@@ -6,6 +7,7 @@ import {
   truncateAll,
 } from '../database/testing/test-database';
 import { UsersService } from '../users/users.service';
+import { RealtimeBroadcaster } from '../collaboration/realtime-broadcaster';
 import { BoardsService } from './boards.service';
 
 describe('BoardsService (against scheduler_test)', () => {
@@ -192,6 +194,59 @@ describe('BoardsService (against scheduler_test)', () => {
         .where('board_id', '=', boardId)
         .execute();
       expect(cols).toHaveLength(0);
+    });
+  });
+
+  describe('removeMember', () => {
+    it('removes a non-owner member from the board', async () => {
+      const board = await boards.create(aliceId, { name: 'Shared' });
+      await db
+        .insertInto('board_members')
+        .values({ board_id: board.id, user_id: bobId, role: 'editor' })
+        .execute();
+
+      await boards.removeMember(board.id, bobId);
+
+      expect(await boards.getMemberRole(board.id, bobId)).toBeNull();
+      // The owner is untouched.
+      expect(await boards.getMemberRole(board.id, aliceId)).toBe('owner');
+    });
+
+    it('refuses to remove the owner', async () => {
+      const board = await boards.create(aliceId, { name: 'Owned' });
+
+      await expect(boards.removeMember(board.id, aliceId)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(await boards.getMemberRole(board.id, aliceId)).toBe('owner');
+    });
+
+    it('throws NotFound when the target is not a member', async () => {
+      const board = await boards.create(aliceId, { name: 'Solo' });
+
+      await expect(boards.removeMember(board.id, bobId)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('broadcasts board:member_removed to the board room', async () => {
+      const emitToBoard = jest.fn();
+      const realtime = { emitToBoard } as unknown as RealtimeBroadcaster;
+      const boardsWithRealtime = new BoardsService(db, realtime);
+
+      const board = await boardsWithRealtime.create(aliceId, { name: 'Live' });
+      await db
+        .insertInto('board_members')
+        .values({ board_id: board.id, user_id: bobId, role: 'viewer' })
+        .execute();
+
+      await boardsWithRealtime.removeMember(board.id, bobId);
+
+      expect(emitToBoard).toHaveBeenCalledWith(
+        board.id,
+        'board:member_removed',
+        { boardId: board.id, userId: bobId },
+      );
     });
   });
 

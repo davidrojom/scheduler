@@ -1,4 +1,10 @@
-import { Inject, Injectable, Optional } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { Transaction } from 'kysely';
 import { RealtimeBroadcaster } from '../collaboration/realtime-broadcaster';
@@ -7,6 +13,7 @@ import { Board, BoardRole, DB } from '../database/database.types';
 import {
   BoardDetailDto,
   BoardDto,
+  BoardMemberDto,
   BoardSummaryDto,
   CreatedBoardDto,
 } from './boards.types';
@@ -79,19 +86,7 @@ export class BoardsService {
       .where('id', '=', boardId)
       .executeTakeFirstOrThrow();
 
-    const memberRows = await this.db
-      .selectFrom('board_members')
-      .innerJoin('users', 'users.id', 'board_members.user_id')
-      .where('board_members.board_id', '=', boardId)
-      .select([
-        'users.id as user_id',
-        'users.name as name',
-        'users.email as email',
-        'users.avatar_url as avatar_url',
-        'board_members.role as role',
-      ])
-      .orderBy('board_members.created_at', 'asc')
-      .execute();
+    const members = await this.fetchMembers(boardId);
 
     const columnRows = await this.db
       .selectFrom('columns')
@@ -120,13 +115,7 @@ export class BoardsService {
     return {
       board: mapBoard(board),
       myRole,
-      members: memberRows.map((m) => ({
-        userId: m.user_id,
-        name: m.name,
-        email: m.email,
-        avatarUrl: m.avatar_url,
-        role: m.role,
-      })),
+      members,
       columns: columnRows.map((c) => ({
         id: c.id,
         title: c.title,
@@ -143,6 +132,36 @@ export class BoardsService {
       })),
       participants: participantRows.map((p) => p.name),
     };
+  }
+
+  /** Lists a board's collaborators (owner included). Used by the members modal,
+   * kept separate from `getDetail` so it never pulls the full board content. */
+  getMembers(boardId: string): Promise<BoardMemberDto[]> {
+    return this.fetchMembers(boardId);
+  }
+
+  private async fetchMembers(boardId: string): Promise<BoardMemberDto[]> {
+    const rows = await this.db
+      .selectFrom('board_members')
+      .innerJoin('users', 'users.id', 'board_members.user_id')
+      .where('board_members.board_id', '=', boardId)
+      .select([
+        'users.id as user_id',
+        'users.name as name',
+        'users.email as email',
+        'users.avatar_url as avatar_url',
+        'board_members.role as role',
+      ])
+      .orderBy('board_members.created_at', 'asc')
+      .execute();
+
+    return rows.map((m) => ({
+      userId: m.user_id,
+      name: m.name,
+      email: m.email,
+      avatarUrl: m.avatar_url,
+      role: m.role,
+    }));
   }
 
   async update(boardId: string, dto: UpdateBoardDto): Promise<BoardDto> {
@@ -169,6 +188,40 @@ export class BoardsService {
 
   async remove(boardId: string): Promise<void> {
     await this.db.deleteFrom('boards').where('id', '=', boardId).execute();
+  }
+
+  /**
+   * Removes a collaborator from a board (owner-only, enforced at the route).
+   * The owner cannot be removed — there is exactly one (invites never grant
+   * `owner`), so this also blocks the owner removing themselves. Broadcasts
+   * `board:member_removed` so the removed user's client leaves the board and the
+   * others refresh their collaborator list.
+   */
+  async removeMember(boardId: string, targetUserId: string): Promise<void> {
+    const member = await this.db
+      .selectFrom('board_members')
+      .select('role')
+      .where('board_id', '=', boardId)
+      .where('user_id', '=', targetUserId)
+      .executeTakeFirst();
+
+    if (!member) {
+      throw new NotFoundException('User is not a member of this board');
+    }
+    if (member.role === 'owner') {
+      throw new ForbiddenException('The board owner cannot be removed');
+    }
+
+    await this.db
+      .deleteFrom('board_members')
+      .where('board_id', '=', boardId)
+      .where('user_id', '=', targetUserId)
+      .execute();
+
+    this.realtime?.emitToBoard(boardId, 'board:member_removed', {
+      boardId,
+      userId: targetUserId,
+    });
   }
 
   async importForUser(

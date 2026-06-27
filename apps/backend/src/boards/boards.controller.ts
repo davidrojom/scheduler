@@ -17,6 +17,7 @@ import { BoardsService } from './boards.service';
 import {
   BoardDetailDto,
   BoardDto,
+  BoardMemberDto,
   BoardSummaryDto,
   CreatedBoardDto,
   ImportResultDto,
@@ -79,6 +80,24 @@ export class BoardsController {
   @HttpCode(200)
   async remove(@Param('id') id: string): Promise<{ success: true }> {
     await this.boards.remove(id);
+    return { success: true };
+  }
+
+  @Get(':id/members')
+  @UseGuards(BoardRoleGuard)
+  getMembers(@Param('id') id: string): Promise<BoardMemberDto[]> {
+    return this.boards.getMembers(id);
+  }
+
+  @Delete(':id/members/:userId')
+  @BoardRoles('owner')
+  @UseGuards(BoardRoleGuard)
+  @HttpCode(200)
+  async removeMember(
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+  ): Promise<{ success: true }> {
+    await this.boards.removeMember(id, userId);
     return { success: true };
   }
 }

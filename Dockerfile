@@ -14,10 +14,24 @@ COPY apps/backend/package.json ./apps/backend/
 # Install workspace deps against the committed lockfile
 RUN pnpm install --frozen-lockfile
 
-# Copy sources and build the frontend only
+# Copy sources
 COPY . .
+
+# Angular embeds its environment at build time, so the backend API/WebSocket URLs
+# are injected here as build args and written into environment.prod.ts before the
+# production build (which swaps environment.ts → environment.prod.ts).
+# In Coolify set these as Build Args on the frontend application.
+ARG API_BASE_URL=http://localhost:3100/api
+ARG WS_URL=http://localhost:3100
+RUN printf "export const environment = {\n  production: true,\n  apiBaseUrl: '%s',\n  wsUrl: '%s',\n};\n" \
+      "$API_BASE_URL" "$WS_URL" > apps/frontend/src/environments/environment.prod.ts
+
+# Build the frontend only
 RUN pnpm --filter @scheduler/frontend build
 
-FROM httpd:2.4 AS runtime
-COPY --from=build /app/apps/frontend/dist/scheduler/browser /usr/local/apache2/htdocs/
+# Serve the static SPA with nginx (try_files fallback so deep links / the OAuth
+# /auth/callback route resolve to index.html instead of 404).
+FROM nginx:1.27-alpine AS runtime
+COPY apps/frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/apps/frontend/dist/scheduler/browser /usr/share/nginx/html
 EXPOSE 80

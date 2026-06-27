@@ -55,9 +55,17 @@
     overflow: auto;
   }
 
+  // Default to scrollable so a swipe starting on an event still pans the
+  // board/grid; the drag library preventDefaults real moves once a long-press
+  // promotes the gesture to a drag (see .drag-enabled below).
   ::ng-deep .cal-event {
-    touch-action: none; // This allows drag after long press
+    touch-action: pan-x pan-y;
     cursor: pointer;
+  }
+
+  ::ng-deep .cal-event.drag-enabled,
+  ::ng-deep .cal-event.long-press-active {
+    touch-action: none;
   }
 
   ::ng-deep .cal-resize-handle {

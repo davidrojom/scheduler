@@ -325,10 +325,18 @@ ngb-modal-window,
     touch-action: pan-y pan-x;
   }
 
+  /* Default to scrollable: a swipe that starts on an event still pans the
+     board/grid. The drag library preventDefaults real touchmoves once a
+     long-press promotes the gesture to a drag, so dragging is unaffected. */
   .cal-event {
-    touch-action: none;
+    touch-action: pan-x pan-y;
     -webkit-user-select: none;
     user-select: none;
+  }
+
+  .cal-event.drag-enabled,
+  .cal-event.long-press-active {
+    touch-action: none;
   }
 
   .cdk-drag {

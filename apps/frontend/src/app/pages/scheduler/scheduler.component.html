@@ -154,7 +154,7 @@
         column.controls.id; let i = $index) {
         <div
           #columnContainer
-          class="flex flex-col w-[500px] min-w-[500px] select-none rounded-lg border border-border bg-card shadow-sm overflow-hidden"
+          class="schedule-column flex flex-col w-[500px] min-w-[500px] select-none rounded-lg border border-border bg-card shadow-sm overflow-hidden"
           cdkDrag
           [cdkDragDisabled]="(canEdit$ | async) === false"
           [cdkDragStartDelay]="{

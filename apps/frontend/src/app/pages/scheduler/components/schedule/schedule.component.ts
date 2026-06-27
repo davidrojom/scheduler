@@ -167,7 +167,12 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
               primary: color.primary,
               secondary: color.secondary,
             },
-            draggable: !this.readOnly() && task.draggable,
+            // On mobile, events are intentionally NOT draggable: a draggable
+            // event makes angular-calendar attach a non-passive touchmove
+            // listener that preventDefaults (blocking page scroll the moment a
+            // finger lands on a task). Mobile users edit times via the tap
+            // modal instead, so a touch on a task scrolls like empty space.
+            draggable: !this.readOnly() && task.draggable && !this.isMobile,
             resizable:
               this.readOnly() || this.isMobile
                 ? { beforeStart: false, afterEnd: false }
@@ -185,7 +190,13 @@ export class ScheduleComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    this.setupLongPressDrag();
+    // The custom long-press handlers exist only to enable touch dragging of
+    // events. On mobile that is disabled (see the `draggable` mapping above) so
+    // that touching a task never blocks scrolling — therefore we don't attach
+    // these capture-phase, non-passive touch listeners on mobile at all.
+    if (!this.isMobile) {
+      this.setupLongPressDrag();
+    }
   }
 
   private setupLongPressDrag(): void {

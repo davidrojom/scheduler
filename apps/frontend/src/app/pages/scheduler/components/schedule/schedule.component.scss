@@ -19,28 +19,27 @@
     overflow-x: hidden;
   }
 
+  // Default to scrollable: the calendar's own touch-drag is off on mobile, so a
+  // finger swipe starting on an event pans the board like anywhere else. A task
+  // is moved via a custom long-press (see ScheduleComponent#armDrag).
   ::ng-deep .cal-event {
+    touch-action: pan-x pan-y;
     cursor: pointer;
     -webkit-user-select: none;
     user-select: none;
-    transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
-  }
-
-  ::ng-deep .cal-event.long-press-waiting {
-    opacity: 0.8;
-    transform: scale(0.98);
-  }
-
-  ::ng-deep .cal-event.long-press-active {
-    opacity: 1;
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 1000;
   }
 
   ::ng-deep .cal-resize-handle {
     display: none !important;
   }
+}
+
+// While a long-press is dragging a task it follows the finger via an inline
+// transform; this just lifts it visually above its neighbours.
+::ng-deep .cal-event-container.sch-dragging {
+  z-index: 1000;
+  opacity: 0.95;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 @media (max-width: 768px) {
@@ -55,17 +54,9 @@
     overflow: auto;
   }
 
-  // Default to scrollable so a swipe starting on an event still pans the
-  // board/grid; the drag library preventDefaults real moves once a long-press
-  // promotes the gesture to a drag (see .drag-enabled below).
   ::ng-deep .cal-event {
     touch-action: pan-x pan-y;
     cursor: pointer;
-  }
-
-  ::ng-deep .cal-event.drag-enabled,
-  ::ng-deep .cal-event.long-press-active {
-    touch-action: none;
   }
 
   ::ng-deep .cal-resize-handle {

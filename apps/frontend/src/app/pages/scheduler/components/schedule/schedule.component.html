@@ -66,6 +66,7 @@
 >
   <div
     class="cal-event"
+    [attr.data-task-id]="event.event.id"
     [mwlCalendarTooltip]="
       !tooltipDisabled
         ? (event.event.title

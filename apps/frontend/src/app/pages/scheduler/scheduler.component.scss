@@ -79,7 +79,7 @@
     touch-action: none;
   }
 
-  .schedule-column {
+  .flex.flex-col.divide-y {
     width: 90vw !important;
     min-width: 90vw !important;
   }
@@ -94,7 +94,7 @@
     scroll-padding: 0 12px;
   }
 
-  .schedule-column {
+  .flex.flex-col.divide-y {
     scroll-snap-align: start;
     scroll-snap-stop: always;
   }

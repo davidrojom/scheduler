@@ -41,7 +41,6 @@ import { ParticipantStatsModalComponent } from './components/modals/participant-
 import { SettingsComponent } from './components/modals/settings/settings.component';
 import { ProjectSwitcherComponent } from './components/project-switcher/project-switcher.component';
 import { ShareInviteComponent } from './components/share-invite/share-invite.component';
-import { CollaboratorsComponent } from './components/collaborators/collaborators.component';
 import { AuthMenuComponent } from '../../shared/ui/components/auth-menu/auth-menu.component';
 import { PresenceIndicatorComponent } from './components/presence-indicator/presence-indicator.component';
 import { CursorOverlayComponent } from './components/cursor-overlay/cursor-overlay.component';
@@ -64,7 +63,6 @@ import { HlmButtonDirective, HlmInputDirective } from '../../shared/ui/spartan';
     ReactiveFormsModule,
     ProjectSwitcherComponent,
     ShareInviteComponent,
-    CollaboratorsComponent,
     AuthMenuComponent,
     PresenceIndicatorComponent,
     CursorOverlayComponent,

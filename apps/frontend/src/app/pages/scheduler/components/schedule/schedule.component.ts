@@ -7,17 +7,14 @@ import {
   input,
   DestroyRef,
   OnInit,
-  AfterViewInit,
-  OnDestroy,
   ElementRef,
-  NgZone,
+  AfterViewInit,
 } from '@angular/core';
 import { Subject, distinctUntilChanged, filter, map } from 'rxjs';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import {
   CalendarEvent,
   CalendarEventTimesChangedEvent,
-  CalendarEventTimesChangedEventType,
   CalendarView,
   CalendarDateFormatter,
 } from 'angular-calendar';
@@ -76,9 +73,7 @@ interface Task {
   standalone: true,
   imports: [SharedModule],
 })
-export class ScheduleComponent
-  implements OnInit, AfterViewInit, OnDestroy
-{
+export class ScheduleComponent implements OnInit, AfterViewInit {
   @ViewChild('modalContent', { static: true })
   modalContent!: TemplateRef<unknown>;
 
@@ -102,6 +97,19 @@ export class ScheduleComponent
 
   activeDayIsOpen = true;
 
+  private longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  private touchStartX = 0;
+  private touchStartY = 0;
+  private touchStartTime = 0;
+  private readonly LONG_PRESS_DELAY = 500; // 500ms
+  private readonly MOVE_THRESHOLD = 10; // 10px
+  private readonly TAP_MAX_DURATION = 500; // 500ms
+  private currentTouchEventId: string | null = null;
+  private currentTouchEvent: TouchEvent | null = null;
+  private currentTouchElement: HTMLElement | null = null;
+  private isDragEnabled = false;
+  private isScrolling = false;
+
   get isMobile(): boolean {
     return this.mobileDetectionService.isMobile;
   }
@@ -111,10 +119,9 @@ export class ScheduleComponent
     private readonly tasksService: TasksService,
     private readonly destroyRef: DestroyRef,
     private readonly mobileDetectionService: MobileDetectionService,
+    private readonly elementRef: ElementRef,
     private readonly projectService: ProjectService,
     private readonly changeDetector: ChangeDetectorRef,
-    private readonly elementRef: ElementRef<HTMLElement>,
-    private readonly zone: NgZone
   ) {}
 
   ngOnInit(): void {
@@ -129,9 +136,9 @@ export class ScheduleComponent
           (a, b) =>
             a.dayStartHour === b.dayStartHour &&
             a.dayEndHour === b.dayEndHour &&
-            a.segmentsByHour === b.segmentsByHour
+            a.segmentsByHour === b.segmentsByHour,
         ),
-        takeUntilDestroyed(this.destroyRef)
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((config) => {
         this.hourSegments = config.segmentsByHour;
@@ -145,7 +152,7 @@ export class ScheduleComponent
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((allTasks) => {
         const columnTasks = allTasks.filter(
-          (task) => task.columnId === this.columnId()
+          (task) => task.columnId === this.columnId(),
         );
 
         this.tasks = columnTasks.map((task) => {
@@ -160,12 +167,7 @@ export class ScheduleComponent
               primary: color.primary,
               secondary: color.secondary,
             },
-            // On mobile the calendar's own touch-drag is disabled so a finger
-            // swipe always scrolls the board; dragging to reschedule is handled
-            // by our custom long-press logic (see the touch handlers below).
-            // On desktop the library's native mouse drag stays enabled.
-            draggable:
-              !this.readOnly() && task.draggable && !this.isMobile,
+            draggable: !this.readOnly() && task.draggable,
             resizable:
               this.readOnly() || this.isMobile
                 ? { beforeStart: false, afterEnd: false }
@@ -182,260 +184,285 @@ export class ScheduleComponent
       });
   }
 
-  // ───────────────────────── Mobile long-press drag ─────────────────────────
-  // angular-calendar's own touch-drag is disabled on mobile (see the events
-  // map above) so a normal finger swipe always scrolls the board. To move a
-  // task the user long-presses it: after LONG_PRESS_MS holding still the event
-  // "lifts" and a floating ghost follows the finger; on release we snap the
-  // vertical delta to the grid and persist the new time.
-  //
-  // The ghost is a detached clone appended to <body>, NOT the calendar's own
-  // element: repositioning the library's node while the touch is active makes
-  // angular-calendar clone it on the next change-detection pass (leaving the
-  // moved copy hidden behind stale duplicates). The real node is only touched
-  // once on release. Plain touch events (no synthetic TouchEvent construction)
-  // so it works on iOS Safari as well as Android.
-  private readonly LONG_PRESS_MS = 350;
-  private readonly MOVE_CANCEL_PX = 12;
-
-  private longPressTimer: ReturnType<typeof setTimeout> | null = null;
-  private touchStartX = 0;
-  private touchStartY = 0;
-  private dragArmed = false;
-  private dragTaskId: string | null = null;
-  private dragOrigStart: Date | null = null;
-  private dragOrigEnd: Date | null = null;
-  private pxPerMinute = 0;
-  private minutesPerSegment = 0;
-  private ghostEl: HTMLElement | null = null;
-  // Set when a long-press lifts a task; swallows the synthetic click that a
-  // touchend would otherwise fire so a drag/lift never also opens the modal.
-  private suppressClick = false;
-
   ngAfterViewInit(): void {
-    const host = this.elementRef.nativeElement;
-    // Run outside Angular: these fire on every touchmove and must not schedule
-    // change detection until a drag actually commits. The isMobile guard lives
-    // inside the handlers so a viewport resize doesn't need a re-bind.
-    this.zone.runOutsideAngular(() => {
-      host.addEventListener('touchstart', this.onTouchStart, { passive: true });
-      // passive:false so we can block scrolling, but only once a drag is armed.
-      host.addEventListener('touchmove', this.onTouchMove, { passive: false });
-      host.addEventListener('touchend', this.onTouchEnd, { passive: true });
-      host.addEventListener('touchcancel', this.onTouchEnd, { passive: true });
+    this.setupLongPressDrag();
+  }
+
+  private setupLongPressDrag(): void {
+    const element = this.elementRef.nativeElement;
+
+    const boundOnTouchStart = this.onTouchStart.bind(this);
+    const boundOnTouchMove = this.onTouchMove.bind(this);
+    const boundOnTouchEnd = this.onTouchEnd.bind(this);
+    const boundOnTouchCancel = this.onTouchCancel.bind(this);
+
+    element.addEventListener('touchstart', boundOnTouchStart, {
+      passive: false,
+      capture: true,
+    });
+    element.addEventListener('touchmove', boundOnTouchMove, {
+      passive: false,
+      capture: true,
+    });
+    element.addEventListener('touchend', boundOnTouchEnd, {
+      passive: false,
+      capture: true,
+    });
+    element.addEventListener('touchcancel', boundOnTouchCancel, {
+      passive: false,
+      capture: true,
     });
   }
 
-  ngOnDestroy(): void {
-    const host = this.elementRef.nativeElement;
-    host.removeEventListener('touchstart', this.onTouchStart);
-    host.removeEventListener('touchmove', this.onTouchMove);
-    host.removeEventListener('touchend', this.onTouchEnd);
-    host.removeEventListener('touchcancel', this.onTouchEnd);
-    this.clearLongPress();
-    this.removeGhost();
-  }
+  private onTouchStart(event: TouchEvent): void {
+    const target = event.target as HTMLElement;
+    const calEvent = target.closest('.cal-event') as HTMLElement;
 
-  private onTouchStart = (event: TouchEvent): void => {
-    this.suppressClick = false;
-    if (!this.isMobile || this.readOnly() || event.touches.length !== 1) {
+    if (!calEvent) {
+      this.isDragEnabled = false;
       return;
     }
-    const calEvent = (event.target as HTMLElement).closest(
-      '.cal-event'
-    ) as HTMLElement | null;
-    const taskId = calEvent?.getAttribute('data-task-id') ?? null;
-    if (!calEvent || !taskId) {
-      // Empty grid area: leave the gesture untouched so the board scrolls.
+
+    if (
+      this.isDragEnabled &&
+      calEvent.getAttribute('data-drag-allowed') === 'true'
+    ) {
       return;
     }
+
+    event.stopImmediatePropagation();
+
+    const eventId = this.getEventIdFromElement(calEvent);
+    if (!eventId) {
+      return;
+    }
+
     const touch = event.touches[0];
     this.touchStartX = touch.clientX;
     this.touchStartY = touch.clientY;
-    this.dragArmed = false;
-    this.dragTaskId = taskId;
-    this.clearLongPress();
-    this.longPressTimer = setTimeout(() => this.armDrag(), this.LONG_PRESS_MS);
-  };
+    this.touchStartTime = Date.now();
+    this.currentTouchEventId = eventId;
+    this.currentTouchEvent = event;
+    this.currentTouchElement = calEvent;
 
-  private onTouchMove = (event: TouchEvent): void => {
-    if (!this.dragTaskId) {
+    calEvent.classList.add('long-press-waiting');
+
+    this.longPressTimer = setTimeout(() => {
+      calEvent.classList.remove('long-press-waiting');
+      calEvent.classList.add('long-press-active', 'drag-enabled');
+
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
+
+      calEvent.setAttribute('data-drag-allowed', 'true');
+      this.isDragEnabled = true;
+
+      this.longPressTimer = null;
+      this.triggerCalendarDrag(calEvent, event);
+    }, this.LONG_PRESS_DELAY);
+  }
+
+  private onTouchMove(event: TouchEvent): void {
+    const target = event.target as HTMLElement;
+    const calEvent = target.closest('.cal-event') as HTMLElement;
+
+    if (!calEvent) {
       return;
     }
+
+    if (this.isScrolling) {
+      return;
+    }
+
+    if (
+      this.isDragEnabled &&
+      calEvent.getAttribute('data-drag-allowed') === 'true'
+    ) {
+      return;
+    }
+
+    if (!event.touches.length) {
+      return;
+    }
+
     const touch = event.touches[0];
-    if (!this.dragArmed) {
-      // Moved before the long-press fired → it's a scroll, not a drag.
-      if (
-        Math.abs(touch.clientX - this.touchStartX) > this.MOVE_CANCEL_PX ||
-        Math.abs(touch.clientY - this.touchStartY) > this.MOVE_CANCEL_PX
-      ) {
-        this.resetDrag();
+    const deltaX = Math.abs(touch.clientX - this.touchStartX);
+    const deltaY = Math.abs(touch.clientY - this.touchStartY);
+
+    if (deltaX > this.MOVE_THRESHOLD || deltaY > this.MOVE_THRESHOLD) {
+      this.isScrolling = true;
+
+      if (this.longPressTimer) {
+        this.cancelLongPress();
+        calEvent.classList.remove('long-press-waiting', 'long-press-active');
+        this.currentTouchEventId = null;
+        this.isDragEnabled = false;
       }
       return;
     }
-    // Armed: take over the gesture, stop the board scrolling, and move the
-    // ghost with the finger (a plain inline transform on our own element).
-    event.preventDefault();
-    if (this.ghostEl) {
-      const deltaY = touch.clientY - this.touchStartY;
-      this.ghostEl.style.transform = `translateY(${deltaY}px)`;
-    }
-  };
 
-  private onTouchEnd = (event: TouchEvent): void => {
-    if (this.dragTaskId && this.dragArmed) {
-      this.suppressClick = true;
-      this.commitDrag(event.changedTouches[0].clientY - this.touchStartY);
-    }
-    this.resetDrag();
-  };
-
-  private armDrag(): void {
-    const id = this.dragTaskId;
-    const host = this.elementRef.nativeElement;
-    const task = this.tasks.find((candidate) => candidate.id === id);
-    const calEvent = id
-      ? (host.querySelector(
-          `.cal-event[data-task-id="${id}"]`
-        ) as HTMLElement | null)
-      : null;
-    const container = calEvent?.closest(
-      '.cal-event-container'
-    ) as HTMLElement | null;
-    const segment = host.querySelector(
-      '.cal-hour-segment'
-    ) as HTMLElement | null;
-    const segmentHeight = segment?.getBoundingClientRect().height ?? 0;
-    if (!task || !calEvent || !container || segmentHeight <= 0) {
-      this.resetDrag();
-      return;
-    }
-    this.minutesPerSegment = 60 / this.hourSegments;
-    this.pxPerMinute = segmentHeight / this.minutesPerSegment;
-    this.dragOrigStart = new Date(task.start);
-    this.dragOrigEnd = new Date(task.end);
-    this.dragArmed = true;
-
-    // Floating ghost that follows the finger, cloned from the real event box
-    // but owned by us (in <body>) so the calendar never touches it. Its visual
-    // styles are copied from the live element's computed style because, sitting
-    // outside the component, it would otherwise lose the calendar's scoped CSS.
-    const rect = calEvent.getBoundingClientRect();
-    const cs = getComputedStyle(calEvent);
-    const ghost = calEvent.cloneNode(true) as HTMLElement;
-    ghost.removeAttribute('hidden');
-    ghost.style.cssText =
-      `position:fixed;left:${rect.left}px;top:${rect.top}px;` +
-      `width:${rect.width}px;height:${rect.height}px;margin:0;box-sizing:border-box;` +
-      `background:${cs.backgroundColor};color:${cs.color};` +
-      `border:${cs.borderTopWidth} ${cs.borderTopStyle} ${cs.borderTopColor};` +
-      `border-radius:${cs.borderRadius};padding:${cs.padding};` +
-      `font:${cs.font};overflow:hidden;` +
-      `z-index:9999;pointer-events:none;opacity:0.95;` +
-      `box-shadow:0 8px 20px rgba(0,0,0,0.3);transition:none;`;
-    host.ownerDocument.body.appendChild(ghost);
-    this.ghostEl = ghost;
-
-    // The real event is deliberately left untouched for the whole gesture:
-    // any change to it (style, class or position) while the touch is active
-    // makes angular-calendar clone the node on the next change-detection pass.
-
-    // Haptic nudge so the user feels the task "pick up".
-    if (typeof navigator.vibrate === 'function') {
-      navigator.vibrate(15);
+    if (this.longPressTimer) {
+      event.stopImmediatePropagation();
     }
   }
 
-  private commitDrag(deltaY: number): void {
-    const task = this.tasks.find(
-      (candidate) => candidate.id === this.dragTaskId
-    );
-    if (!task || !this.dragOrigStart || !this.dragOrigEnd) {
-      return;
-    }
-    const snappedMinutes = this.snapDeltaToMinutes(deltaY);
-    if (snappedMinutes === 0) {
-      // Lifted but not moved: nothing to persist (the ghost is removed by
-      // resetDrag and the real event never moved).
-      return;
-    }
-    const { start, end } = this.shiftWithinDay(
-      this.dragOrigStart,
-      this.dragOrigEnd,
-      snappedMinutes
-    );
-    // The touch has ended, so repositioning the real event is now safe.
-    this.zone.run(() => {
-      this.eventTimesChanged({
-        type: CalendarEventTimesChangedEventType.Drag,
-        event: task,
-        newStart: start,
-        newEnd: end,
+  private onTouchEnd(event: TouchEvent): void {
+    const touchDuration = Date.now() - this.touchStartTime;
+
+    if (this.longPressTimer && !this.isDragEnabled) {
+      if (touchDuration < this.TAP_MAX_DURATION) {
+        const lastTouch = event.changedTouches[0];
+        const deltaX = Math.abs(lastTouch.clientX - this.touchStartX);
+        const deltaY = Math.abs(lastTouch.clientY - this.touchStartY);
+
+        if (deltaX < this.MOVE_THRESHOLD && deltaY < this.MOVE_THRESHOLD) {
+          this.cancelLongPress();
+
+          if (this.currentTouchEventId && this.currentTouchElement) {
+            const task = this.tasks.find(
+              (t) => t.id === this.currentTouchEventId,
+            );
+            if (task) {
+              this.handleEvent('task', task);
+            }
+          }
+
+          this.cleanupTouchState();
+          return;
+        }
+      }
+
+      const allEvents =
+        this.elementRef.nativeElement.querySelectorAll('.cal-event');
+      allEvents.forEach((calEvent: HTMLElement) => {
+        calEvent.classList.remove('long-press-waiting');
       });
+      return;
+    }
+
+    this.cleanupTouchState();
+  }
+
+  private cleanupTouchState(): void {
+    const allEvents =
+      this.elementRef.nativeElement.querySelectorAll('.cal-event');
+    allEvents.forEach((calEvent: HTMLElement) => {
+      calEvent.classList.remove(
+        'long-press-waiting',
+        'long-press-active',
+        'drag-enabled',
+      );
+      calEvent.removeAttribute('data-drag-allowed');
     });
-  }
 
-  private snapDeltaToMinutes(deltaY: number): number {
-    if (this.pxPerMinute <= 0) {
-      return 0;
+    if (this.longPressTimer) {
+      this.cancelLongPress();
     }
-    return (
-      Math.round(deltaY / this.pxPerMinute / this.minutesPerSegment) *
-      this.minutesPerSegment
-    );
+
+    this.currentTouchEventId = null;
+    this.currentTouchEvent = null;
+    this.currentTouchElement = null;
+    this.isDragEnabled = false;
+    this.isScrolling = false;
   }
 
-  private shiftWithinDay(
-    origStart: Date,
-    origEnd: Date,
-    minutes: number
-  ): { start: Date; end: Date } {
-    const durationMs = origEnd.getTime() - origStart.getTime();
-    const dayStart = new Date(origStart);
-    dayStart.setHours(this.dayStartHour, 0, 0, 0);
-    const dayEnd = new Date(origStart);
-    dayEnd.setHours(this.dayEndHour, 0, 0, 0);
-
-    let start = new Date(origStart.getTime() + minutes * 60000);
-    if (start < dayStart) {
-      start = dayStart;
-    }
-    let end = new Date(start.getTime() + durationMs);
-    if (end > dayEnd) {
-      end = dayEnd;
-      start = new Date(end.getTime() - durationMs);
-    }
-    return { start, end };
+  private onTouchCancel(): void {
+    this.cleanupTouchState();
   }
 
-  private removeGhost(): void {
-    if (this.ghostEl) {
-      this.ghostEl.remove();
-      this.ghostEl = null;
-    }
+  private triggerCalendarDrag(
+    calEvent: HTMLElement,
+    originalEvent: TouchEvent,
+  ): void {
+    const touch = originalEvent.touches[0];
+
+    const newTouch = new Touch({
+      identifier: Date.now(),
+      target: calEvent,
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      screenX: touch.screenX,
+      screenY: touch.screenY,
+      pageX: touch.pageX,
+      pageY: touch.pageY,
+      radiusX: 2.5,
+      radiusY: 2.5,
+      rotationAngle: 0,
+      force: 0.5,
+    });
+
+    const newTouchEvent = new TouchEvent('touchstart', {
+      cancelable: true,
+      bubbles: true,
+      touches: [newTouch],
+      targetTouches: [newTouch],
+      changedTouches: [newTouch],
+    });
+
+    calEvent.dispatchEvent(newTouchEvent);
+
+    setTimeout(() => {
+      const moveTouch = new Touch({
+        identifier: Date.now(),
+        target: calEvent,
+        clientX: touch.clientX + 1,
+        clientY: touch.clientY + 1,
+        screenX: touch.screenX + 1,
+        screenY: touch.screenY + 1,
+        pageX: touch.pageX + 1,
+        pageY: touch.pageY + 1,
+        radiusX: 2.5,
+        radiusY: 2.5,
+        rotationAngle: 0,
+        force: 0.5,
+      });
+
+      const moveTouchEvent = new TouchEvent('touchmove', {
+        cancelable: true,
+        bubbles: true,
+        touches: [moveTouch],
+        targetTouches: [moveTouch],
+        changedTouches: [moveTouch],
+      });
+
+      calEvent.dispatchEvent(moveTouchEvent);
+    }, 10);
   }
 
-  private resetDrag(): void {
-    this.clearLongPress();
-    this.removeGhost();
-    this.dragArmed = false;
-    this.dragTaskId = null;
-    this.dragOrigStart = null;
-    this.dragOrigEnd = null;
-  }
-
-  private clearLongPress(): void {
-    if (this.longPressTimer !== null) {
+  private cancelLongPress(): void {
+    if (this.longPressTimer) {
       clearTimeout(this.longPressTimer);
       this.longPressTimer = null;
     }
+  }
+
+  private getEventIdFromElement(element: Element): string | null {
+    const eventElement = element.closest('.cal-event');
+    if (!eventElement) {
+      return null;
+    }
+
+    const textContent = eventElement.textContent?.trim();
+
+    if (textContent) {
+      const matchingTask = this.tasks.find((t) =>
+        textContent.startsWith(t.title),
+      );
+
+      if (matchingTask) {
+        return matchingTask.id;
+      }
+    }
+
+    return null;
   }
 
   private timeRangesOverlap(
     start1: Date,
     end1: Date,
     start2: Date,
-    end2: Date
+    end2: Date,
   ): boolean {
     return start1 < end2 && start2 < end1;
   }
@@ -449,21 +476,21 @@ export class ScheduleComponent
           task.start,
           task.end,
           otherTask.start,
-          otherTask.end
+          otherTask.end,
         )
       ) {
         return false;
       }
 
       return task.participants.some((participant) =>
-        otherTask.participants.includes(participant)
+        otherTask.participants.includes(participant),
       );
     });
   }
 
   private getTaskColor(
     task: Task,
-    allTasks: Task[]
+    allTasks: Task[],
   ): typeof TASK_COLORS.blue | typeof TASK_COLORS.red {
     return this.hasParticipantConflict(task, allTasks)
       ? TASK_COLORS.red
@@ -559,13 +586,6 @@ export class ScheduleComponent
         saveHandler: (task: Task) => this.addTask(task),
       };
     } else if (action === 'task') {
-      // A long-press lift/drag ends with a synthetic click; ignore it so
-      // rescheduling a task on mobile never also pops the edit modal.
-      if (this.suppressClick) {
-        this.suppressClick = false;
-        return;
-      }
-
       // Track opening edit task modal
       window.umami?.track('open-edit-task-modal');
 

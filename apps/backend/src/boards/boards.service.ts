@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -222,6 +223,88 @@ export class BoardsService {
       boardId,
       userId: targetUserId,
     });
+  }
+
+  /**
+   * Changes a collaborator's role (owner-only, enforced at the route). An
+   * editor⇄viewer change is a plain update; promoting to `owner` is a
+   * single-owner transfer — the target becomes owner, the caller (current owner)
+   * is demoted to editor, and `boards.owner_id` moves, all in one transaction.
+   * The owner cannot be demoted directly; ownership must be transferred instead.
+   * Broadcasts `board:member_role_changed` for every affected member.
+   */
+  async changeMemberRole(
+    boardId: string,
+    callerId: string,
+    targetUserId: string,
+    role: BoardRole,
+  ): Promise<BoardMemberDto[]> {
+    const target = await this.db
+      .selectFrom('board_members')
+      .select('role')
+      .where('board_id', '=', boardId)
+      .where('user_id', '=', targetUserId)
+      .executeTakeFirst();
+
+    if (!target) {
+      throw new NotFoundException('User is not a member of this board');
+    }
+    if (target.role === 'owner' && role !== 'owner') {
+      throw new BadRequestException(
+        'Transfer ownership to another member instead of demoting the owner',
+      );
+    }
+    if (target.role === role) {
+      return this.fetchMembers(boardId);
+    }
+
+    if (role === 'owner') {
+      await this.db.transaction().execute(async (trx) => {
+        await trx
+          .updateTable('board_members')
+          .set({ role: 'owner' })
+          .where('board_id', '=', boardId)
+          .where('user_id', '=', targetUserId)
+          .execute();
+        await trx
+          .updateTable('board_members')
+          .set({ role: 'editor' })
+          .where('board_id', '=', boardId)
+          .where('user_id', '=', callerId)
+          .execute();
+        await trx
+          .updateTable('boards')
+          .set({ owner_id: targetUserId, updated_at: new Date() })
+          .where('id', '=', boardId)
+          .execute();
+      });
+
+      this.realtime?.emitToBoard(boardId, 'board:member_role_changed', {
+        boardId,
+        userId: targetUserId,
+        role: 'owner',
+      });
+      this.realtime?.emitToBoard(boardId, 'board:member_role_changed', {
+        boardId,
+        userId: callerId,
+        role: 'editor',
+      });
+      return this.fetchMembers(boardId);
+    }
+
+    await this.db
+      .updateTable('board_members')
+      .set({ role })
+      .where('board_id', '=', boardId)
+      .where('user_id', '=', targetUserId)
+      .execute();
+
+    this.realtime?.emitToBoard(boardId, 'board:member_role_changed', {
+      boardId,
+      userId: targetUserId,
+      role,
+    });
+    return this.fetchMembers(boardId);
   }
 
   async importForUser(

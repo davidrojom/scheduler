@@ -1,5 +1,9 @@
 import { randomUUID } from 'crypto';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Database } from '../database/database.module';
 import {
   createTestDatabase,
@@ -246,6 +250,85 @@ describe('BoardsService (against scheduler_test)', () => {
         board.id,
         'board:member_removed',
         { boardId: board.id, userId: bobId },
+      );
+    });
+  });
+
+  describe('changeMemberRole', () => {
+    async function ownerIdOf(boardId: string): Promise<string> {
+      const row = await db
+        .selectFrom('boards')
+        .select('owner_id')
+        .where('id', '=', boardId)
+        .executeTakeFirstOrThrow();
+      return row.owner_id;
+    }
+
+    it('changes a collaborator between editor and viewer', async () => {
+      const board = await boards.create(aliceId, { name: 'Roles' });
+      await db
+        .insertInto('board_members')
+        .values({ board_id: board.id, user_id: bobId, role: 'editor' })
+        .execute();
+
+      await boards.changeMemberRole(board.id, aliceId, bobId, 'viewer');
+      expect(await boards.getMemberRole(board.id, bobId)).toBe('viewer');
+
+      await boards.changeMemberRole(board.id, aliceId, bobId, 'editor');
+      expect(await boards.getMemberRole(board.id, bobId)).toBe('editor');
+    });
+
+    it('transfers ownership: target becomes owner, caller becomes editor, owner_id moves', async () => {
+      const board = await boards.create(aliceId, { name: 'Transfer' });
+      await db
+        .insertInto('board_members')
+        .values({ board_id: board.id, user_id: bobId, role: 'editor' })
+        .execute();
+
+      await boards.changeMemberRole(board.id, aliceId, bobId, 'owner');
+
+      expect(await boards.getMemberRole(board.id, bobId)).toBe('owner');
+      expect(await boards.getMemberRole(board.id, aliceId)).toBe('editor');
+      expect(await ownerIdOf(board.id)).toBe(bobId);
+    });
+
+    it('throws NotFound when the target is not a member', async () => {
+      const board = await boards.create(aliceId, { name: 'Solo' });
+      await expect(
+        boards.changeMemberRole(board.id, aliceId, bobId, 'editor'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('refuses to demote the owner without a transfer', async () => {
+      const board = await boards.create(aliceId, { name: 'Owned' });
+      await expect(
+        boards.changeMemberRole(board.id, aliceId, aliceId, 'editor'),
+      ).rejects.toThrow(BadRequestException);
+      expect(await boards.getMemberRole(board.id, aliceId)).toBe('owner');
+    });
+
+    it('broadcasts a role-changed event per affected member on transfer', async () => {
+      const emitToBoard = jest.fn();
+      const realtime = { emitToBoard } as unknown as RealtimeBroadcaster;
+      const svc = new BoardsService(db, realtime);
+
+      const board = await svc.create(aliceId, { name: 'Live' });
+      await db
+        .insertInto('board_members')
+        .values({ board_id: board.id, user_id: bobId, role: 'editor' })
+        .execute();
+
+      await svc.changeMemberRole(board.id, aliceId, bobId, 'owner');
+
+      expect(emitToBoard).toHaveBeenCalledWith(
+        board.id,
+        'board:member_role_changed',
+        { boardId: board.id, userId: bobId, role: 'owner' },
+      );
+      expect(emitToBoard).toHaveBeenCalledWith(
+        board.id,
+        'board:member_role_changed',
+        { boardId: board.id, userId: aliceId, role: 'editor' },
       );
     });
   });

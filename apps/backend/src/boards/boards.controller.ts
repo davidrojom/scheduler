@@ -26,6 +26,7 @@ import { BoardRoles, MemberRole } from './decorators/board-roles.decorator';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { ImportBoardsDto } from './dto/import-boards.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
+import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { BoardRoleGuard } from './guards/board-role.guard';
 
 @Controller('boards')
@@ -99,5 +100,17 @@ export class BoardsController {
   ): Promise<{ success: true }> {
     await this.boards.removeMember(id, userId);
     return { success: true };
+  }
+
+  @Patch(':id/members/:userId')
+  @BoardRoles('owner')
+  @UseGuards(BoardRoleGuard)
+  changeMemberRole(
+    @CurrentUser() user: UserDto,
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Body() dto: UpdateMemberRoleDto,
+  ): Promise<BoardMemberDto[]> {
+    return this.boards.changeMemberRole(id, user.id, userId, dto.role);
   }
 }

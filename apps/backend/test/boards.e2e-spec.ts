@@ -353,6 +353,73 @@ describe('Boards (e2e)', () => {
         .set('Authorization', bearer(aliceToken))
         .expect(404);
     });
+
+    it('lets the owner change a collaborator between editor and viewer', async () => {
+      await request(httpServer)
+        .patch(`/api/boards/${boardId}/members/${bobId}`)
+        .set('Authorization', bearer(aliceToken))
+        .send({ role: 'viewer' })
+        .expect(200);
+
+      const members = await request(httpServer)
+        .get(`/api/boards/${boardId}/members`)
+        .set('Authorization', bearer(aliceToken))
+        .expect(200);
+      const bob = (members.body as { userId: string; role: string }[]).find(
+        (m) => m.userId === bobId,
+      );
+      expect(bob?.role).toBe('viewer');
+    });
+
+    it('transfers ownership and swaps the management powers', async () => {
+      await request(httpServer)
+        .patch(`/api/boards/${boardId}/members/${bobId}`)
+        .set('Authorization', bearer(aliceToken))
+        .send({ role: 'owner' })
+        .expect(200);
+
+      // Alice is now an editor: she can no longer remove members or transfer.
+      await request(httpServer)
+        .delete(`/api/boards/${boardId}/members/${bobId}`)
+        .set('Authorization', bearer(aliceToken))
+        .expect(403);
+
+      // Bob is the new owner: he can manage (e.g. demote Alice to viewer).
+      await request(httpServer)
+        .patch(`/api/boards/${boardId}/members/${aliceId}`)
+        .set('Authorization', bearer(bobToken))
+        .send({ role: 'viewer' })
+        .expect(200);
+
+      const members = await request(httpServer)
+        .get(`/api/boards/${boardId}/members`)
+        .set('Authorization', bearer(bobToken))
+        .expect(200);
+      const byId = new Map(
+        (members.body as { userId: string; role: string }[]).map((m) => [
+          m.userId,
+          m.role,
+        ]),
+      );
+      expect(byId.get(bobId)).toBe('owner');
+      expect(byId.get(aliceId)).toBe('viewer');
+    });
+
+    it('forbids a non-owner from changing roles', async () => {
+      await request(httpServer)
+        .patch(`/api/boards/${boardId}/members/${aliceId}`)
+        .set('Authorization', bearer(bobToken))
+        .send({ role: 'viewer' })
+        .expect(403);
+    });
+
+    it('rejects an invalid role with 400', async () => {
+      await request(httpServer)
+        .patch(`/api/boards/${boardId}/members/${bobId}`)
+        .set('Authorization', bearer(aliceToken))
+        .send({ role: 'superadmin' })
+        .expect(400);
+    });
   });
 
   async function boardsHasMember(

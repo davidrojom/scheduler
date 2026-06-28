@@ -275,6 +275,20 @@ export class ApiBoardPersistence implements BoardPersistence {
     }
   }
 
+  /**
+   * Updates the current user's role on a board after a server-side role change
+   * (an owner changed it, possibly via an ownership transfer). Local-only — the
+   * authoritative change already happened server-side.
+   */
+  setBoardRole(boardId: string, role: BoardRole): void {
+    this._projects = this._projects.map((p) =>
+      p.id === boardId ? { ...p, myRole: role } : p
+    );
+    if (this._currentProject?.id === boardId) {
+      this._currentProject = { ...this._currentProject, myRole: role };
+    }
+  }
+
   switchProject(id: string): Observable<void> {
     const pending$ = this._pendingCreates.get(id);
     const ready$ = pending$ ? pending$.pipe(catchError(() => of(null))) : of(null);

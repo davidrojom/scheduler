@@ -109,6 +109,21 @@ export class ProjectService {
           this.handleRemovedFromBoard(boardId);
         }
       });
+
+    // My role on a board changed (e.g. I was promoted to owner, or demoted to
+    // editor by an ownership transfer): update myRole so owner/editor controls
+    // follow immediately. Other members' changes are handled by the modal.
+    this.collab.memberRoleChanged$
+      .pipe(takeUntilDestroyed())
+      .subscribe(({ boardId, userId, role }) => {
+        if (this.authService.currentUser?.id === userId) {
+          this.persistence.setBoardRole(boardId, role);
+          this._projects$.next(this.persistence.getProjects());
+          if (this.persistence.getCurrentProject()?.id === boardId) {
+            this._currentProject$.next(this.persistence.getCurrentProject());
+          }
+        }
+      });
   }
 
   /**

@@ -62,4 +62,32 @@ describe('BoardMembersService', () => {
 
     await expectAsync(result).toBeResolvedTo({ success: true });
   });
+
+  it('PATCHes a member role and returns the refreshed list', async () => {
+    const updated: BoardMember[] = [
+      {
+        userId: 'u1',
+        name: 'Alice',
+        email: 'alice@example.com',
+        avatarUrl: null,
+        role: 'editor',
+      },
+      {
+        userId: 'u2',
+        name: 'Bob',
+        email: 'bob@example.com',
+        avatarUrl: null,
+        role: 'owner',
+      },
+    ];
+
+    const result = firstValueFrom(service.updateRole(boardId, 'u2', 'owner'));
+
+    const req = httpMock.expectOne(`${membersUrl}/u2`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ role: 'owner' });
+    req.flush(updated);
+
+    await expectAsync(result).toBeResolvedTo(updated);
+  });
 });

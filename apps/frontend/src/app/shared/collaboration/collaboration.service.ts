@@ -4,6 +4,7 @@ import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { io } from 'socket.io-client';
 
 import { environment } from '../../../environments/environment';
+import { BoardRole } from '../models/project.model';
 import { AuthService } from '../services/auth.service';
 import {
   PresenceMember,
@@ -88,6 +89,11 @@ export class CollaborationService {
     boardId: string;
     userId: string;
   }>();
+  private readonly _memberRoleChanged$ = new Subject<{
+    boardId: string;
+    userId: string;
+    role: BoardRole;
+  }>();
   private readonly _presence$ = new BehaviorSubject<PresenceMember[]>([]);
   private readonly _cursors$ = new BehaviorSubject<RemoteCursor[]>([]);
 
@@ -102,6 +108,16 @@ export class CollaborationService {
    */
   readonly memberRemoved$: Observable<{ boardId: string; userId: string }> =
     this._memberRemoved$.asObservable();
+  /**
+   * Emits when a member's role changed (incl. an ownership transfer, which emits
+   * one event per affected member). Clients update their own `myRole` and the
+   * collaborators list.
+   */
+  readonly memberRoleChanged$: Observable<{
+    boardId: string;
+    userId: string;
+    role: BoardRole;
+  }> = this._memberRoleChanged$.asObservable();
   /** Collaborators currently present in the active board's room (incl. self). */
   readonly presence$: Observable<PresenceMember[]> =
     this._presence$.asObservable();
@@ -310,6 +326,23 @@ export class CollaborationService {
       }
       const removal = { boardId: payload.boardId, userId: payload.userId };
       this.zone.run(() => this._memberRemoved$.next(removal));
+    });
+
+    // A member's role changed (incl. an ownership transfer). Re-enter the zone so
+    // `myRole`-driven controls and the collaborators list re-render.
+    socket.on('board:member_role_changed', (...args: unknown[]) => {
+      const payload = args[0] as
+        | { boardId?: string; userId?: string; role?: BoardRole }
+        | undefined;
+      if (!payload?.boardId || !payload?.userId || !payload?.role) {
+        return;
+      }
+      const change = {
+        boardId: payload.boardId,
+        userId: payload.userId,
+        role: payload.role,
+      };
+      this.zone.run(() => this._memberRoleChanged$.next(change));
     });
 
     // Server-side op rejections (e.g. viewer FORBIDDEN) arrive here; they must

@@ -37,4 +37,20 @@ export class BoardMembersService {
       `${this.baseUrl}/${boardId}/members/${userId}`
     );
   }
+
+  /**
+   * Changes a member's role. Owner-only (enforced server-side). Setting `owner`
+   * transfers ownership: the target becomes owner and the caller drops to editor.
+   * Returns the refreshed member list.
+   */
+  updateRole(
+    boardId: string,
+    userId: string,
+    role: BoardRole
+  ): Observable<BoardMember[]> {
+    return this.http.patch<BoardMember[]>(
+      `${this.baseUrl}/${boardId}/members/${userId}`,
+      { role }
+    );
+  }
 }

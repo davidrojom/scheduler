@@ -11,7 +11,7 @@ import {
 import { LocalBoardPersistence } from './local-board-persistence.service';
 import { ApiBoardPersistence } from './api-board-persistence.service';
 import { AuthService } from '../services/auth.service';
-import { Project, ProjectConfig } from '../models/project.model';
+import { BoardRole, Project, ProjectConfig } from '../models/project.model';
 import { Task } from '../../pages/scheduler/components/modals/task/task-modal.component';
 import { BoardSyncScope } from '../collaboration/collab-content.reducer';
 
@@ -80,6 +80,14 @@ export class PersistenceFacade implements BoardPersistence {
    */
   removeBoardLocally(id: string): void {
     this.api.removeBoardLocally(id);
+  }
+
+  /**
+   * Reflects a server-side change to the current user's role on a board. Only DB
+   * boards have roles, so this delegates straight to the API strategy.
+   */
+  setBoardRole(id: string, role: BoardRole): void {
+    this.api.setBoardRole(id, role);
   }
 
   switchProject(id: string): Observable<void> {

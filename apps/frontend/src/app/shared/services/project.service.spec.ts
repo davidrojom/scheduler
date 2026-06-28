@@ -20,10 +20,16 @@ import { User } from '../models/user.model';
 import { environment } from '../../../environments/environment';
 
 const memberRemoved$ = new Subject<{ boardId: string; userId: string }>();
+const memberRoleChanged$ = new Subject<{
+  boardId: string;
+  userId: string;
+  role: 'owner' | 'editor' | 'viewer';
+}>();
 const collabStub: Partial<CollaborationService> = {
   remoteEvents$: EMPTY,
   resync$: EMPTY,
   memberRemoved$: memberRemoved$.asObservable(),
+  memberRoleChanged$: memberRoleChanged$.asObservable(),
   isLive: () => false,
   emitOp: () => false,
   setActiveBoard: () => undefined,
@@ -219,6 +225,45 @@ describe('ProjectService (DB boards)', () => {
 
     expect(projects.map((p) => p.id)).toEqual(['b1']);
     expect(current!.id).toBe('b1');
+  });
+
+  it('updates myRole when the current user role changes (ownership transfer demote)', () => {
+    const service = createService();
+
+    localStorage.setItem(`scheduler_migrated_${TEST_USER.id}`, 'true');
+    auth.setAuthenticated(true);
+    httpMock
+      .expectOne(boardsUrl)
+      .flush([{ id: 'b1', name: 'Mine', myRole: 'owner', config: {}, updatedAt: ISO }]);
+    httpMock.expectOne(`${boardsUrl}/b1`).flush(detailDto('b1', 'Mine'));
+
+    let current: Project | null = null;
+    service.currentProject$.subscribe((p) => (current = p));
+    expect(current!.myRole).toBe('owner');
+
+    memberRoleChanged$.next({ boardId: 'b1', userId: TEST_USER.id, role: 'editor' });
+
+    expect(current!.myRole).toBe('editor');
+    httpMock.expectNone(() => true);
+  });
+
+  it('ignores a role change aimed at a different user', () => {
+    const service = createService();
+
+    localStorage.setItem(`scheduler_migrated_${TEST_USER.id}`, 'true');
+    auth.setAuthenticated(true);
+    httpMock
+      .expectOne(boardsUrl)
+      .flush([{ id: 'b1', name: 'Mine', myRole: 'owner', config: {}, updatedAt: ISO }]);
+    httpMock.expectOne(`${boardsUrl}/b1`).flush(detailDto('b1', 'Mine'));
+
+    let current: Project | null = null;
+    service.currentProject$.subscribe((p) => (current = p));
+
+    memberRoleChanged$.next({ boardId: 'b1', userId: 'someone-else', role: 'owner' });
+
+    expect(current!.myRole).toBe('owner');
+    httpMock.expectNone(() => true);
   });
 
   it('ignores a removal aimed at a different user', () => {

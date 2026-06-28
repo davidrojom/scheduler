@@ -58,16 +58,16 @@
           <p class="truncate text-xs text-muted-foreground">{{ member.email }}</p>
         </div>
 
-        <span
-          hlmBadge
-          [variant]="member.role === 'owner' ? 'default' : 'secondary'"
-          class="shrink-0 capitalize"
+        <ng-container
+          *ngIf="
+            (isOwner$ | async) && member.role !== 'owner';
+            else readonlyRole
+          "
         >
-          {{ member.role }}
-        </span>
-
-        <ng-container *ngIf="(isOwner$ | async) && member.role !== 'owner'">
-          <ng-container *ngIf="confirmingUserId === member.userId; else removeBtn">
+          <!-- Remove confirmation -->
+          <ng-container
+            *ngIf="confirmingUserId === member.userId; else notConfirmingRemove"
+          >
             <button
               hlmBtn
               variant="destructive"
@@ -78,7 +78,7 @@
               (click)="remove(member.userId)"
               [attr.data-confirm-remove]="member.userId"
             >
-              {{ removingUserId === member.userId ? 'Removing…' : 'Confirm' }}
+              {{ removingUserId === member.userId ? 'Removing…' : 'Remove' }}
             </button>
             <button
               hlmBtn
@@ -92,21 +92,97 @@
               Cancel
             </button>
           </ng-container>
-          <ng-template #removeBtn>
-            <button
-              hlmBtn
-              variant="outline"
-              size="sm"
-              type="button"
-              class="shrink-0"
-              (click)="askRemove(member.userId)"
-              [attr.data-remove-member]="member.userId"
-              [attr.aria-label]="'Remove ' + (member.name || member.email)"
+
+          <ng-template #notConfirmingRemove>
+            <!-- Make-owner confirmation -->
+            <ng-container
+              *ngIf="
+                promoteConfirmUserId === member.userId;
+                else memberControls
+              "
             >
-              <i class="ph ph-user-minus text-base"></i>
-            </button>
+              <button
+                hlmBtn
+                variant="default"
+                size="sm"
+                type="button"
+                class="shrink-0"
+                [disabled]="updatingUserId === member.userId"
+                (click)="promote(member.userId)"
+                [attr.data-confirm-promote]="member.userId"
+              >
+                {{
+                  updatingUserId === member.userId
+                    ? 'Transferring…'
+                    : 'Make owner'
+                }}
+              </button>
+              <button
+                hlmBtn
+                variant="ghost"
+                size="sm"
+                type="button"
+                class="shrink-0"
+                [disabled]="updatingUserId === member.userId"
+                (click)="cancelPromote()"
+              >
+                Cancel
+              </button>
+            </ng-container>
+
+            <!-- Default controls: role selector + make owner + remove -->
+            <ng-template #memberControls>
+              <select
+                hlmInput
+                class="h-9 w-28 shrink-0 py-0 text-sm"
+                [ngModel]="member.role"
+                (ngModelChange)="changeRole(member.userId, $event)"
+                [disabled]="updatingUserId === member.userId"
+                [attr.data-role-select]="member.userId"
+                [attr.aria-label]="'Role for ' + (member.name || member.email)"
+              >
+                <option *ngFor="let r of assignableRoles" [value]="r">
+                  {{ r | titlecase }}
+                </option>
+              </select>
+              <button
+                hlmBtn
+                variant="outline"
+                size="sm"
+                type="button"
+                class="shrink-0"
+                (click)="askPromote(member.userId)"
+                [attr.data-make-owner]="member.userId"
+                [attr.aria-label]="'Make ' + (member.name || member.email) + ' owner'"
+                title="Make owner"
+              >
+                <i class="ph ph-crown text-base"></i>
+              </button>
+              <button
+                hlmBtn
+                variant="outline"
+                size="sm"
+                type="button"
+                class="shrink-0"
+                (click)="askRemove(member.userId)"
+                [attr.data-remove-member]="member.userId"
+                [attr.aria-label]="'Remove ' + (member.name || member.email)"
+              >
+                <i class="ph ph-user-minus text-base"></i>
+              </button>
+            </ng-template>
           </ng-template>
         </ng-container>
+
+        <ng-template #readonlyRole>
+          <span
+            hlmBadge
+            [variant]="member.role === 'owner' ? 'default' : 'secondary'"
+            class="shrink-0 capitalize"
+          >
+            {{ member.role }}
+          </span>
+        </ng-template>
       </li>
     </ul>
 

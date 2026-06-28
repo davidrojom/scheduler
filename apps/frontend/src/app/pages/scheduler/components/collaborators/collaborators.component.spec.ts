@@ -50,6 +50,11 @@ describe('CollaboratorsComponent', () => {
   let authState$: BehaviorSubject<boolean>;
   let currentProject$: BehaviorSubject<Project | null>;
   let memberRemoved$: Subject<{ boardId: string; userId: string }>;
+  let memberRoleChanged$: Subject<{
+    boardId: string;
+    userId: string;
+    role: BoardRole;
+  }>;
   let httpMock: HttpTestingController;
   const membersUrl = `${environment.apiBaseUrl}/boards/board-1/members`;
 
@@ -57,6 +62,7 @@ describe('CollaboratorsComponent', () => {
     authState$ = new BehaviorSubject<boolean>(authenticated);
     currentProject$ = new BehaviorSubject<Project | null>(project);
     memberRemoved$ = new Subject();
+    memberRoleChanged$ = new Subject();
 
     TestBed.configureTestingModule({
       imports: [CollaboratorsComponent, HttpClientTestingModule],
@@ -64,7 +70,10 @@ describe('CollaboratorsComponent', () => {
         BoardMembersService,
         { provide: AuthService, useValue: { authState$ } },
         { provide: ProjectService, useValue: { currentProject$ } },
-        { provide: CollaborationService, useValue: { memberRemoved$ } },
+        {
+          provide: CollaborationService,
+          useValue: { memberRemoved$, memberRoleChanged$ },
+        },
         { provide: NgbModal, useValue: { open: jasmine.createSpy('open') } },
       ],
     });
@@ -188,5 +197,75 @@ describe('CollaboratorsComponent', () => {
     component.cancelRemove();
 
     expect(component.confirmingUserId).toBeNull();
+  });
+
+  it('changes a role via PATCH and refreshes the list from the response', () => {
+    const fixture = setup(true, makeProject('owner'));
+    const component = fixture.componentInstance;
+    component.members = [...MEMBERS];
+
+    component.changeRole('editor-1', 'viewer');
+
+    const req = httpMock.expectOne(`${membersUrl}/editor-1`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ role: 'viewer' });
+    const updated = MEMBERS.map((m) =>
+      m.userId === 'editor-1' ? { ...m, role: 'viewer' as BoardRole } : m
+    );
+    req.flush(updated);
+
+    expect(component.members.find((m) => m.userId === 'editor-1')?.role).toBe(
+      'viewer'
+    );
+    expect(component.updatingUserId).toBeNull();
+  });
+
+  it('does not PATCH when the selected role equals the current one', () => {
+    const fixture = setup(true, makeProject('owner'));
+    const component = fixture.componentInstance;
+    component.members = [...MEMBERS];
+
+    component.changeRole('editor-1', 'editor');
+
+    httpMock.expectNone(`${membersUrl}/editor-1`);
+  });
+
+  it('promotes to owner only after confirmation (PATCH role=owner)', () => {
+    const fixture = setup(true, makeProject('owner'));
+    const component = fixture.componentInstance;
+    component.members = [...MEMBERS];
+
+    component.askPromote('editor-1');
+    expect(component.promoteConfirmUserId).toBe('editor-1');
+
+    component.promote('editor-1');
+    const req = httpMock.expectOne(`${membersUrl}/editor-1`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ role: 'owner' });
+    req.flush([
+      { ...MEMBERS[0], role: 'editor' as BoardRole },
+      { ...MEMBERS[1], role: 'owner' as BoardRole },
+    ]);
+
+    expect(component.members.find((m) => m.userId === 'editor-1')?.role).toBe(
+      'owner'
+    );
+    expect(component.promoteConfirmUserId).toBeNull();
+  });
+
+  it('reflects a realtime role change for the active board', () => {
+    const fixture = setup(true, makeProject('owner'));
+    const component = fixture.componentInstance;
+    component.members = [...MEMBERS];
+
+    memberRoleChanged$.next({
+      boardId: 'board-1',
+      userId: 'editor-1',
+      role: 'viewer',
+    });
+
+    expect(component.members.find((m) => m.userId === 'editor-1')?.role).toBe(
+      'viewer'
+    );
   });
 });

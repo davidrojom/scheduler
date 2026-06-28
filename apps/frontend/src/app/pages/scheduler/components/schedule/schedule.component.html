@@ -68,7 +68,7 @@
     class="cal-event"
     [attr.data-task-id]="event.event.id"
     [mwlCalendarTooltip]="
-      !tooltipDisabled
+      !tooltipDisabled && !isMobile
         ? (event.event.title
           | calendarEventTitle
             : (daysInWeek === 1 ? 'dayTooltip' : 'weekTooltip')

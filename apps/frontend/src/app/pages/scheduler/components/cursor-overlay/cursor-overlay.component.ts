@@ -29,35 +29,22 @@ const CURSOR_THROTTLE_MS = 50;
  * view scrolls to keep it in view. */
 const FOLLOW_EDGE_MARGIN_PX = 80;
 
-/** Horizontal scroll needed to bring `cursorX` back inside the container view
- * (0 while it is within `marginPx` of the edges). */
+/** Scroll needed on one axis to bring `pos` back inside the `[min, max]` view
+ * window (0 while it is within `marginPx` of the edges). Axis-agnostic: pass
+ * left/right for horizontal, top/bottom for vertical. */
 export function followScrollDelta(
-  cursorX: number,
-  rect: DOMRect,
+  pos: number,
+  min: number,
+  max: number,
   marginPx: number
 ): number {
-  if (cursorX < rect.left + marginPx) {
-    return Math.round(cursorX - (rect.left + marginPx));
+  if (pos < min + marginPx) {
+    return Math.round(pos - (min + marginPx));
   }
-  if (cursorX > rect.right - marginPx) {
-    return Math.round(cursorX - (rect.right - marginPx));
+  if (pos > max - marginPx) {
+    return Math.round(pos - (max - marginPx));
   }
   return 0;
-}
-
-/** Nearest ancestor of `el` that actually scrolls horizontally, if any. */
-function findScrollContainer(el: HTMLElement): HTMLElement | null {
-  let node: HTMLElement | null = el.parentElement;
-  while (node) {
-    if (
-      node.scrollWidth > node.clientWidth + 1 &&
-      /(auto|scroll)/.test(getComputedStyle(node).overflowX)
-    ) {
-      return node;
-    }
-    node = node.parentElement;
-  }
-  return null;
 }
 
 /**
@@ -163,33 +150,58 @@ export class CursorOverlayComponent implements OnInit {
     this.changeDetector.markForCheck();
   }
 
-  /** Keeps the followed member's cursor in view by scrolling the board
-   * container horizontally (vertical needs no follow: the canvas fits). */
+  /** Keeps the followed member's cursor in view by scrolling every scrollable
+   * ancestor of the canvas on both axes — in this layout the board scrolls
+   * horizontally in one container and vertically in another. */
   private followCursor(canvasRect: DOMRect): void {
     const followedId = this.collab.followedUserId();
     if (!followedId || !this.canvas) {
       return;
     }
     const cursor = this.latest.find((c) => c.userId === followedId);
-    const container = findScrollContainer(this.canvas);
-    if (!cursor || !container) {
+    if (!cursor) {
       return;
     }
-    const delta = followScrollDelta(
-      canvasRect.left + cursor.x * canvasRect.width,
-      container.getBoundingClientRect(),
-      FOLLOW_EDGE_MARGIN_PX
-    );
-    if (delta !== 0) {
-      // ponytail: scrollbar-drag unfollow isn't wired; wheel/touch covers
-      // mouse, trackpad and swipe, and programmatic scroll doesn't retrigger us.
-      container.scrollLeft += delta;
+    const cursorX = canvasRect.left + cursor.x * canvasRect.width;
+    const cursorY = canvasRect.top + cursor.y * canvasRect.height;
+
+    let node: HTMLElement | null = this.canvas.parentElement;
+    while (node) {
+      const style = getComputedStyle(node);
+      const scrollsX =
+        /(auto|scroll)/.test(style.overflowX) &&
+        node.scrollWidth > node.clientWidth + 1;
+      const scrollsY =
+        /(auto|scroll)/.test(style.overflowY) &&
+        node.scrollHeight > node.clientHeight + 1;
+      if (scrollsX || scrollsY) {
+        const rect = node.getBoundingClientRect();
+        if (scrollsX) {
+          node.scrollLeft += followScrollDelta(
+            cursorX,
+            rect.left,
+            rect.right,
+            FOLLOW_EDGE_MARGIN_PX
+          );
+        }
+        if (scrollsY) {
+          node.scrollTop += followScrollDelta(
+            cursorY,
+            rect.top,
+            rect.bottom,
+            FOLLOW_EDGE_MARGIN_PX
+          );
+        }
+      }
+      node = node.parentElement;
     }
   }
 
   @HostListener('wheel')
   @HostListener('touchmove')
   onManualScroll(): void {
+    // ponytail: scrollbar-drag unfollow isn't wired; wheel/touch covers mouse,
+    // trackpad and swipe, and programmatic scrolls don't fire these.
     if (this.collab.followedUserId()) {
       this.collab.followedUserId.set(null);
     }

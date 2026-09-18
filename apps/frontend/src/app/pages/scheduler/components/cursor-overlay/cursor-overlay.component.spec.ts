@@ -134,10 +134,60 @@ describe('CursorOverlayComponent', () => {
   });
 
   it('followScrollDelta returns deltas only when the cursor leaves the view', () => {
-    const rect = fakeRect(0, 0, 400, 600);
-    expect(followScrollDelta(500, rect, 80)).toBeGreaterThan(0);
-    expect(followScrollDelta(-10, rect, 80)).toBeLessThan(0);
-    expect(followScrollDelta(200, rect, 80)).toBe(0);
+    // Horizontal axis.
+    expect(followScrollDelta(500, 0, 400, 80)).toBeGreaterThan(0);
+    expect(followScrollDelta(-10, 0, 400, 80)).toBeLessThan(0);
+    expect(followScrollDelta(200, 0, 400, 80)).toBe(0);
+    // Vertical axis.
+    expect(followScrollDelta(950, 0, 200, 80)).toBeGreaterThan(0);
+    expect(followScrollDelta(-10, 0, 200, 80)).toBeLessThan(0);
+    expect(followScrollDelta(100, 0, 200, 80)).toBe(0);
+  });
+
+  it('scrolls the board container vertically when the followed cursor leaves the view', () => {
+    const container = document.createElement('div');
+    container.style.cssText =
+      'position:fixed;top:0;left:0;width:400px;height:200px;overflow-y:auto;';
+    const canvas = document.createElement('div');
+    canvas.style.cssText = 'width:400px;height:1000px;';
+    container.appendChild(canvas);
+    document.body.appendChild(container);
+
+    spyOn(canvas, 'getBoundingClientRect').and.returnValue(
+      fakeRect(0, 0, 400, 1000)
+    );
+    component.boardId = 'b1';
+    component.canvas = canvas;
+    fixture.detectChanges();
+
+    // Cursor below the viewport: the container scrolls down.
+    followed.set('u2');
+    cursors$.next([
+      {
+        userId: 'u2',
+        name: 'Bob',
+        color: '#00f',
+        x: 0.5,
+        y: 0.95,
+        updatedAt: Date.now(),
+      },
+    ]);
+    expect(container.scrollTop).toBeGreaterThan(0);
+
+    // Cursor above the viewport: the container scrolls back up.
+    container.scrollTop = 500;
+    cursors$.next([
+      {
+        userId: 'u2',
+        name: 'Bob',
+        color: '#00f',
+        x: 0.5,
+        y: 0.02,
+        updatedAt: Date.now(),
+      },
+    ]);
+    expect(container.scrollTop).toBeLessThan(500);
+    container.remove();
   });
 
   it('scrolls the board container to keep the followed cursor in view', () => {

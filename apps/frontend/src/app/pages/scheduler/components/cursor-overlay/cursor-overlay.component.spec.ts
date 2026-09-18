@@ -83,6 +83,48 @@ describe('CursorOverlayComponent', () => {
     expect(emitCursor).not.toHaveBeenCalled();
   });
 
+  it('re-emits the pointer position when the board scrolls under the mouse', () => {
+    jasmine.clock().install();
+    try {
+      const canvas = document.createElement('div');
+      const rectSpy = spyOn(canvas, 'getBoundingClientRect');
+      rectSpy.and.returnValue(fakeRect(100, 50, 400, 200));
+      component.boardId = 'b1';
+      component.canvas = canvas;
+      fixture.detectChanges();
+
+      component.onMouseMove({ clientX: 300, clientY: 150 } as MouseEvent);
+      expect(emitCursor).toHaveBeenCalledWith('b1', 0.5, 0.5);
+
+      // Let the 50ms emit-throttle window expire so the scroll re-emit goes
+      // through its leading edge synchronously.
+      jasmine.clock().tick(50);
+      expect(emitCursor).toHaveBeenCalledTimes(1);
+
+      // Board scrolls (the canvas rect moves) with zero pointer movement.
+      rectSpy.and.returnValue(fakeRect(100, 100, 400, 200));
+      document.dispatchEvent(new Event('scroll'));
+
+      expect(emitCursor).toHaveBeenCalledWith('b1', 0.5, 0.25);
+    } finally {
+      jasmine.clock().uninstall();
+    }
+  });
+
+  it('does not re-emit on scroll before the first pointer movement', () => {
+    const canvas = document.createElement('div');
+    spyOn(canvas, 'getBoundingClientRect').and.returnValue(
+      fakeRect(0, 0, 400, 200)
+    );
+    component.boardId = 'b1';
+    component.canvas = canvas;
+    fixture.detectChanges();
+
+    document.dispatchEvent(new Event('scroll'));
+
+    expect(emitCursor).not.toHaveBeenCalled();
+  });
+
   it('does not emit when there is no active board', () => {
     const canvas = document.createElement('div');
     spyOn(canvas, 'getBoundingClientRect').and.returnValue(

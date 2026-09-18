@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, asyncScheduler, throttleTime } from 'rxjs';
+import { Subject, asyncScheduler, fromEvent, throttleTime } from 'rxjs';
 
 import { CollaborationService } from '../../../../shared/collaboration/collaboration.service';
 import { RemoteCursor } from '../../../../shared/collaboration/collaboration.types';
@@ -71,6 +71,8 @@ export class CursorOverlayComponent implements OnInit {
 
   private latest: RemoteCursor[] = [];
   private readonly moves$ = new Subject<{ clientX: number; clientY: number }>();
+  /** Last pointer position, so scrolling can re-publish it without a mousemove. */
+  private lastPointer: { clientX: number; clientY: number } | null = null;
 
   constructor(
     private readonly collab: CollaborationService,
@@ -96,6 +98,17 @@ export class CursorOverlayComponent implements OnInit {
         this.latest = cursors;
         this.render();
       });
+
+    // Scrolling moves the board under a stationary pointer: the normalized
+    // cursor position changes without any mousemove, so re-publish the last
+    // pointer position. Capture phase — `scroll` doesn't bubble.
+    fromEvent<Event>(document, 'scroll', { capture: true })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (this.lastPointer) {
+          this.moves$.next(this.lastPointer);
+        }
+      });
   }
 
   @HostListener('mousemove', ['$event'])
@@ -103,7 +116,8 @@ export class CursorOverlayComponent implements OnInit {
     if (!this.boardId) {
       return;
     }
-    this.moves$.next({ clientX: event.clientX, clientY: event.clientY });
+    this.lastPointer = { clientX: event.clientX, clientY: event.clientY };
+    this.moves$.next(this.lastPointer);
   }
 
   @HostListener('window:resize')

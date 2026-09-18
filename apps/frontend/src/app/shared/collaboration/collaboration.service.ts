@@ -1,4 +1,4 @@
-import { Inject, Injectable, InjectionToken, NgZone } from '@angular/core';
+import { Inject, Injectable, InjectionToken, NgZone, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { io } from 'socket.io-client';
@@ -56,6 +56,9 @@ export const COLLAB_SOCKET_FACTORY = new InjectionToken<SocketFactory>(
   {
     providedIn: 'root',
     factory: () => (token: string) =>
+      // SAFETY: socket.io's Socket is a structural superset of CollabSocket;
+      // every member the service touches (on/emit/connect/disconnect/io/connected)
+      // exists with compatible signatures on the real client.
       io(`${environment.wsUrl}/collab`, {
         auth: { token },
         transports: ['websocket', 'polling'],
@@ -123,6 +126,8 @@ export class CollaborationService {
     this._presence$.asObservable();
   /** Remote collaborators' live cursors over the active board canvas. */
   readonly cursors$: Observable<RemoteCursor[]> = this._cursors$.asObservable();
+  /** Member whose cursor the local viewport is following, if any. */
+  readonly followedUserId = signal<string | null>(null);
 
   constructor(
     private readonly authService: AuthService,
@@ -162,6 +167,13 @@ export class CollaborationService {
       return;
     }
     this.socket?.emit('cursor:move', { boardId, x, y });
+  }
+
+  /** Toggles cursor-follow mode for `userId` (clicking a followed avatar unfollows). */
+  toggleFollow(userId: string): void {
+    this.followedUserId.update((current) =>
+      current === userId ? null : userId
+    );
   }
 
   setActiveBoard(boardId: string | null): void {
@@ -282,6 +294,9 @@ export class CollaborationService {
       }
       this.presenceByUser.delete(payload.member.userId);
       const hadCursor = this.cursorByUser.delete(payload.member.userId);
+      if (this.followedUserId() === payload.member.userId) {
+        this.followedUserId.set(null);
+      }
       this.zone.run(() => {
         this.publishPresence();
         if (hadCursor) {
@@ -383,6 +398,7 @@ export class CollaborationService {
     const hadCursors = this.cursorByUser.size > 0;
     this.presenceByUser.clear();
     this.cursorByUser.clear();
+    this.followedUserId.set(null);
     if (hadPresence) {
       this.publishPresence();
     }

@@ -25,6 +25,41 @@ interface RenderedCursor {
 
 const CURSOR_THROTTLE_MS = 50;
 
+/** How close (px) to the board's edge the followed cursor may get before the
+ * view scrolls to keep it in view. */
+const FOLLOW_EDGE_MARGIN_PX = 80;
+
+/** Horizontal scroll needed to bring `cursorX` back inside the container view
+ * (0 while it is within `marginPx` of the edges). */
+export function followScrollDelta(
+  cursorX: number,
+  rect: DOMRect,
+  marginPx: number
+): number {
+  if (cursorX < rect.left + marginPx) {
+    return Math.round(cursorX - (rect.left + marginPx));
+  }
+  if (cursorX > rect.right - marginPx) {
+    return Math.round(cursorX - (rect.right - marginPx));
+  }
+  return 0;
+}
+
+/** Nearest ancestor of `el` that actually scrolls horizontally, if any. */
+function findScrollContainer(el: HTMLElement): HTMLElement | null {
+  let node: HTMLElement | null = el.parentElement;
+  while (node) {
+    if (
+      node.scrollWidth > node.clientWidth + 1 &&
+      /(auto|scroll)/.test(getComputedStyle(node).overflowX)
+    ) {
+      return node;
+    }
+    node = node.parentElement;
+  }
+  return null;
+}
+
 /**
  * Wraps the board canvas, captures the local pointer (throttled, normalized
  * 0..1 against the canvas) to emit `cursor:move`, and renders remote
@@ -124,6 +159,39 @@ export class CursorOverlayComponent implements OnInit {
       left: offsetX + cursor.x * canvasRect.width,
       top: offsetY + cursor.y * canvasRect.height,
     }));
+    this.followCursor(canvasRect);
     this.changeDetector.markForCheck();
+  }
+
+  /** Keeps the followed member's cursor in view by scrolling the board
+   * container horizontally (vertical needs no follow: the canvas fits). */
+  private followCursor(canvasRect: DOMRect): void {
+    const followedId = this.collab.followedUserId();
+    if (!followedId || !this.canvas) {
+      return;
+    }
+    const cursor = this.latest.find((c) => c.userId === followedId);
+    const container = findScrollContainer(this.canvas);
+    if (!cursor || !container) {
+      return;
+    }
+    const delta = followScrollDelta(
+      canvasRect.left + cursor.x * canvasRect.width,
+      container.getBoundingClientRect(),
+      FOLLOW_EDGE_MARGIN_PX
+    );
+    if (delta !== 0) {
+      // ponytail: scrollbar-drag unfollow isn't wired; wheel/touch covers
+      // mouse, trackpad and swipe, and programmatic scroll doesn't retrigger us.
+      container.scrollLeft += delta;
+    }
+  }
+
+  @HostListener('wheel')
+  @HostListener('touchmove')
+  onManualScroll(): void {
+    if (this.collab.followedUserId()) {
+      this.collab.followedUserId.set(null);
+    }
   }
 }

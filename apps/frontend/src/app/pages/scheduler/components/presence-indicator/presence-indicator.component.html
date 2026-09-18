@@ -1,5 +1,5 @@
 @if (members$ | async; as members) {
-@if (members.length > 0) {
+@if (members.length) {
 <div
   class="flex items-center gap-1.5"
   title="Collaborators on this board"
@@ -7,14 +7,22 @@
 >
   <div class="flex -space-x-2">
     @for (member of members; track member.userId) {
-    <span
-      class="w-8 h-8 rounded-full grid place-items-center text-sm font-bold text-white uppercase ring-2 ring-background"
+    <button
+      type="button"
+      class="w-8 h-8 rounded-full grid place-items-center text-sm font-bold text-white uppercase ring-2 transition-all cursor-pointer disabled:cursor-default disabled:opacity-90"
+      [class.ring-primary]="isFollowed(member)"
+      [class.ring-background]="!isFollowed(member)"
+      [class.scale-110]="isFollowed(member)"
       [style.background-color]="member.color"
       [attr.data-user-id]="member.userId"
-      [title]="member.name"
+      [attr.aria-pressed]="isFollowed(member)"
+      [attr.aria-label]="avatarTitle(member)"
+      [disabled]="member.userId === selfId"
+      [title]="avatarTitle(member)"
+      (click)="toggleFollow(member)"
     >
       {{ initial(member) }}
-    </span>
+    </button>
     }
   </div>
   <span

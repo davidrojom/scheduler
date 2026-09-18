@@ -317,6 +317,43 @@ describe('CollaborationService', () => {
     expect(presence[presence.length - 1].length).toBe(0);
     expect(cursors[cursors.length - 1].length).toBe(0);
   });
+
+  it('toggleFollow sets the followed user and a second call clears it', () => {
+    setup(true);
+
+    expect(service.followedUserId()).toBeNull();
+    service.toggleFollow('u2');
+    expect(service.followedUserId()).toBe('u2');
+    service.toggleFollow('u2');
+    expect(service.followedUserId()).toBeNull();
+    service.toggleFollow('u3');
+    expect(service.followedUserId()).toBe('u3');
+  });
+
+  it('clears follow mode when the followed member leaves the board', () => {
+    setup(true);
+    service.setActiveBoard('b1');
+    fake.simulateConnect();
+    service.toggleFollow('u2');
+
+    fake.trigger('presence:left', {
+      boardId: 'b1',
+      member: { userId: 'u2', name: 'Bob', color: '#00f' },
+    });
+
+    expect(service.followedUserId()).toBeNull();
+  });
+
+  it('clears follow mode when the active board changes', () => {
+    setup(true);
+    service.setActiveBoard('b1');
+    service.toggleFollow('u2');
+    expect(service.followedUserId()).toBe('u2');
+
+    service.setActiveBoard('b2');
+
+    expect(service.followedUserId()).toBeNull();
+  });
 });
 
 describe('pruneIdleCursors', () => {

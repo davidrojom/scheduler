@@ -1,7 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal, WritableSignal } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
-import { CursorOverlayComponent } from './cursor-overlay.component';
+import {
+  CursorOverlayComponent,
+  followScrollDelta,
+} from './cursor-overlay.component';
 import { CollaborationService } from '../../../../shared/collaboration/collaboration.service';
 import { RemoteCursor } from '../../../../shared/collaboration/collaboration.types';
 
@@ -29,13 +33,16 @@ describe('CursorOverlayComponent', () => {
   let component: CursorOverlayComponent;
   let cursors$: BehaviorSubject<RemoteCursor[]>;
   let emitCursor: jasmine.Spy;
+  let followed: WritableSignal<string | null>;
 
   beforeEach(() => {
     cursors$ = new BehaviorSubject<RemoteCursor[]>([]);
     emitCursor = jasmine.createSpy('emitCursor');
+    followed = signal<string | null>(null);
     const collabStub: Partial<CollaborationService> = {
       cursors$: cursors$.asObservable(),
       presence$: new BehaviorSubject([]).asObservable(),
+      followedUserId: followed,
       emitCursor: emitCursor as unknown as CollaborationService['emitCursor'],
     };
 
@@ -124,5 +131,89 @@ describe('CursorOverlayComponent', () => {
         top: 150,
       })
     );
+  });
+
+  it('followScrollDelta returns deltas only when the cursor leaves the view', () => {
+    const rect = fakeRect(0, 0, 400, 600);
+    expect(followScrollDelta(500, rect, 80)).toBeGreaterThan(0);
+    expect(followScrollDelta(-10, rect, 80)).toBeLessThan(0);
+    expect(followScrollDelta(200, rect, 80)).toBe(0);
+  });
+
+  it('scrolls the board container to keep the followed cursor in view', () => {
+    const container = document.createElement('div');
+    container.style.cssText =
+      'position:fixed;top:0;left:0;width:400px;height:200px;overflow-x:auto;';
+    const canvas = document.createElement('div');
+    canvas.style.cssText = 'width:1000px;height:100px;';
+    container.appendChild(canvas);
+    document.body.appendChild(container);
+
+    spyOn(canvas, 'getBoundingClientRect').and.returnValue(
+      fakeRect(0, 0, 1000, 100)
+    );
+    component.boardId = 'b1';
+    component.canvas = canvas;
+    fixture.detectChanges();
+
+    followed.set('u2');
+    cursors$.next([
+      {
+        userId: 'u2',
+        name: 'Bob',
+        color: '#00f',
+        x: 0.95,
+        y: 0.5,
+        updatedAt: Date.now(),
+      },
+    ]);
+
+    expect(container.scrollLeft).toBeGreaterThan(0);
+    container.remove();
+  });
+
+  it('does not scroll when the followed cursor stays in view', () => {
+    const container = document.createElement('div');
+    container.style.cssText =
+      'position:fixed;top:0;left:0;width:400px;height:200px;overflow-x:auto;';
+    const canvas = document.createElement('div');
+    canvas.style.cssText = 'width:1000px;height:100px;';
+    container.appendChild(canvas);
+    document.body.appendChild(container);
+
+    spyOn(canvas, 'getBoundingClientRect').and.returnValue(
+      fakeRect(0, 0, 1000, 100)
+    );
+    component.boardId = 'b1';
+    component.canvas = canvas;
+    fixture.detectChanges();
+
+    followed.set('u2');
+    cursors$.next([
+      {
+        userId: 'u2',
+        name: 'Bob',
+        color: '#00f',
+        x: 0.2,
+        y: 0.5,
+        updatedAt: Date.now(),
+      },
+    ]);
+
+    expect(container.scrollLeft).toBe(0);
+    container.remove();
+  });
+
+  it('stops following on manual scrolling (wheel or touch)', () => {
+    followed.set('u2');
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    host.dispatchEvent(new Event('wheel'));
+    expect(followed()).toBeNull();
+
+    followed.set('u2');
+    host.dispatchEvent(new Event('touchmove'));
+    expect(followed()).toBeNull();
   });
 });

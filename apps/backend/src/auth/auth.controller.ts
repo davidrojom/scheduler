@@ -31,7 +31,26 @@ export class AuthController {
   ): Promise<void> {
     const token = await this.authService.login(user);
     const frontendUrl = this.config.getOrThrow<string>('FRONTEND_URL');
-    res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+
+    let origin: string;
+    let target: URL;
+    try {
+      origin = new URL(frontendUrl).origin;
+      target = new URL('/auth/callback', origin);
+    } catch {
+      throw new Error(`Invalid FRONTEND_URL: ${frontendUrl}`);
+    }
+
+    // Allowlist: only ever send the user back to the configured frontend origin.
+    if (target.origin !== origin) {
+      throw new Error(
+        'Redirect target does not match the configured frontend origin',
+      );
+    }
+    target.searchParams.set('token', token);
+
+    res.writeHead(302, { Location: target.toString() });
+    res.end();
   }
 
   @Post('impersonate')
@@ -42,7 +61,14 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  me(@CurrentUser() user: UserDto): MeResponse {
+  async me(
+    @CurrentUser() user: UserDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<MeResponse> {
+    // Sliding session: re-issue the JWT on every app load so active users
+    // stay logged in; the frontend interceptor persists the new token.
+    res.setHeader('X-Refreshed-Token', await this.authService.login(user));
+
     return {
       id: user.id,
       email: user.email,

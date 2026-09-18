@@ -46,4 +46,26 @@ describe('authInterceptor', () => {
     expect(req.request.headers.has('Authorization')).toBeFalse();
     req.flush([]);
   });
+
+  it('persists a rotated token from the X-Refreshed-Token response header', () => {
+    localStorage.setItem(AUTH_TOKEN_KEY, 'jwt-old');
+
+    http.get('/api/auth/me').subscribe();
+
+    const req = httpMock.expectOne('/api/auth/me');
+    req.flush({}, { headers: { 'X-Refreshed-Token': 'jwt-new' } });
+
+    expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe('jwt-new');
+  });
+
+  it('leaves the stored token untouched when no X-Refreshed-Token header is present', () => {
+    localStorage.setItem(AUTH_TOKEN_KEY, 'jwt-old');
+
+    http.get('/api/boards').subscribe();
+
+    const req = httpMock.expectOne('/api/boards');
+    req.flush([]);
+
+    expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe('jwt-old');
+  });
 });

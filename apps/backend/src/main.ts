@@ -12,6 +12,7 @@ async function bootstrap() {
   app.enableCors({
     origin: config.get<string>('FRONTEND_URL') ?? 'http://localhost:4200',
     credentials: true,
+    exposedHeaders: ['X-Refreshed-Token'],
   });
 
   app.useGlobalPipes(

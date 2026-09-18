@@ -27,7 +27,12 @@ import {
   Validators,
 } from '@angular/forms';
 import { v4 } from 'uuid';
-import { Observable, distinctUntilChanged, map } from 'rxjs';
+import {
+  Observable,
+  debounceTime,
+  distinctUntilChanged,
+  map,
+} from 'rxjs';
 import { ColumnsService } from '../../shared/services/columns.service';
 import { ProjectService } from '../../shared/services/project.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -153,7 +158,14 @@ export class SchedulerComponent implements OnInit {
       });
 
     this.form.controls.columns.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        // Column title typing emits per keystroke; debounce so renaming a
+        // column sends one column:update op after editing settles instead of
+        // one per keystroke. Structural changes (add/remove/reorder) commit
+        // immediately via saveOrder(), so only this typing path is delayed.
+        debounceTime(500),
+        takeUntilDestroyed(this.destroyRef)
+      )
       .subscribe((columns) => {
         this.columnsService.updateColumnOrder(
           columns.map((column) => ({
@@ -301,8 +313,14 @@ export class SchedulerComponent implements OnInit {
       return;
     }
 
-    const data = JSON.parse(atob(hash));
-    this.configService.setConfig(data);
+    let data: unknown;
+    try {
+      data = JSON.parse(atob(hash));
+    } catch {
+      alert('Invalid share code. Check the value and try again.');
+      return;
+    }
+    this.configService.setConfig(data as Parameters<ConfigService['setConfig']>[0]);
     this.reloadBoard();
   }
 
